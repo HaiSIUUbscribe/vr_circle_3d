@@ -1,423 +1,414 @@
-import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-import { VRButton } from 'https://unpkg.com/three@0.160.0/examples/jsm/webxr/VRButton.js';
-import { XRControllerModelFactory } from 'https://unpkg.com/three@0.160.0/examples/jsm/webxr/XRControllerModelFactory.js';
+// Web/Desktop input logic (kept outside index.html)
 
-const ui = {
-    easyBtn: document.getElementById('easyBtn'),
-    hardBtn: document.getElementById('hardBtn'),
-    restartBtn: document.getElementById('restartBtn'),
-    modeLabel: document.getElementById('modeLabel'),
-    levelLabel: document.getElementById('levelLabel'),
-    timerLabel: document.getElementById('timerLabel'),
-    status: document.getElementById('status')
-};
+window.VR_DEV_MODE = window.VR_DEV_MODE ?? (
+  location.protocol === 'file:' ||
+  location.hostname === 'localhost' ||
+  location.hostname === '127.0.0.1' ||
+  location.search.includes('dev=1')
+);
 
-// 1. Khởi tạo Scene
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x1f1f1f);
+function setAimUI(show,cd){
+  document.getElementById('aim-label').style.display=show?'flex':'none';
+  document.getElementById('power-wrap').style.display=show?'flex':'none';
+  if(cd){
+    document.getElementById('aim-target-name').textContent=cd.name.toUpperCase();
+    document.getElementById('aim-target-name').style.color=cd.hex;
+  }
+  syncHoloPanel(LEVELS[G.lvIdx],show?cd:null);
+}
 
-// 2. Khởi tạo Camera
-const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
-camera.position.set(0, 1.6, 3);
+function animReturn(mb){
+  const s=mb.grp.position.clone(),e=mb.grp.userData.origPos.clone();let t=0;
+  (function step(){t+=.055;if(t>=1){mb.grp.position.copy(e);return;}
+  mb.grp.position.lerpVectors(s,e,1-(1-t)*(1-t));requestAnimationFrame(step);})();
+}
+function pulseM(mesh){let t=0;(function step(){t+=.09;mesh.scale.setScalar(t>=1?1:1+.3*Math.sin(t*Math.PI));if(t<1)requestAnimationFrame(step);})();}
 
-// 3. Khởi tạo Renderer & Bật WebXR
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.xr.enabled = true;
-document.body.appendChild(renderer.domElement);
-document.body.appendChild(VRButton.createButton(renderer));
+function spawnParticles(pos,hex,success){
+  const {r,g,b}=h2c(hex);
+  const n=success?20:12;
+  for(let i=0;i<n;i++){
+    const geo=new THREE.SphereGeometry(.045,6,6);
+    const mat=new THREE.MeshBasicMaterial({color:new THREE.Color(r,g,b),transparent:true,opacity:.9});
+    const m=new THREE.Mesh(geo,mat);m.position.copy(pos);
+    const spd=success?3.2:2;
+    const vel=new THREE.Vector3((Math.random()-.5)*spd,(Math.random()*.5+(success ? .5 : .2))*spd,(Math.random()-.5)*spd);
+    scene.add(m);burstParticles.push({mesh:m,vel,life:1});
+  }
+  if(success){
+    const rg=new THREE.Mesh(new THREE.TorusGeometry(.1,.06,8,32),new THREE.MeshBasicMaterial({color:new THREE.Color(r,g,b),transparent:true,opacity:.8,blending:THREE.AdditiveBlending}));
+    rg.position.copy(pos);rg.rotation.x=Math.PI/2;scene.add(rg);
+    burstParticles.push({mesh:rg,vel:new THREE.Vector3(0,0,0),life:1,ring:true});
+  }
+}
+function updateBurst(dt){
+  for(let i=burstParticles.length-1;i>=0;i--){
+    const p=burstParticles[i];p.life-=dt*(p.ring?2:1.5);
+    if(p.life<=0){scene.remove(p.mesh);burstParticles.splice(i,1);continue;}
+    if(p.ring){p.mesh.scale.setScalar(1+(1-p.life)*3.5);p.mesh.material.opacity=p.life*.7;}
+    else{p.vel.y-=dt*4;p.mesh.position.addScaledVector(p.vel,dt);p.mesh.material.opacity=p.life*.9;p.mesh.scale.setScalar(Math.max(.1,p.life*.9));}
+  }
+}
 
-// 4. Thêm ánh sáng cơ bản
-const light = new THREE.HemisphereLight(0xffffff, 0x444444, 1.0);
-light.position.set(0, 1, 0);
-scene.add(light);
+function showCombo(n,pts){
+  if(n<2) return;
+  const el=document.getElementById('combo-pop');
+  const msgs=['','','DOUBLE!','TRIPLE!','QUAD!!','ULTRA!!!'];
+  const cols=['','','#ff9500','#ff2d78','#a855f7','#00f5ff'];
+  el.textContent=(msgs[Math.min(n,5)]||'COMBO x'+n);
+  el.style.color=cols[Math.min(n,5)]||'#fff';
+  el.style.fontSize=(n>=4?'3.5rem':'2.8rem');
+  el.style.opacity='1';el.style.transform='translate(-50%,-50%) scale(1.35)';
+  el.style.transition='none';
+  setTimeout(()=>{el.style.transition='all .6s';el.style.opacity='0';el.style.transform='translate(-50%,-50%) scale(1) translateY(-30px)';},800);
+}
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-directionalLight.position.set(0, 10, 5);
-scene.add(directionalLight);
+function lvDone(){
+  if(!G.active) return;
+  clearTimeout(lvDoneTmr);lvDoneTmr=null;
+  clearInterval(G.timerInt);
+  const bonus=G.mode==='hard'?G.timer*2:0;G.score+=bonus;sfx.up();
+  if(G.lvIdx<LEVELS.length-1){
+    toast('🎉 Level '+(G.lvIdx+1)+' xong! +'+(bonus||0)+' bonus','ok',2500);
+    clearTimeout(lvAdvanceTmr);
+    lvAdvanceTmr=setTimeout(()=>{lvAdvanceTmr=null;if(!G.active) return;G.lvIdx++;buildLevel();},2700);
+  } else {
+    sfx.win();
+    clearTimeout(endGameTmr);
+    endGameTmr=setTimeout(()=>{endGameTmr=null;endGame(true);},1200);
+  }
+}
 
-// 5. Mặt sàn
-const gridHelper = new THREE.GridHelper(10, 10);
-scene.add(gridHelper);
+function endGame(win){
+  clearGameTimeouts();
+  G.active=false;clearInterval(G.timerInt);
+  const elapsed=Math.round((Date.now()-G.startTime)/1000);
+  const m=Math.floor(elapsed/60),s=elapsed%60;
 
-// Raycaster
-const raycaster = new THREE.Raycaster();
-const intersected = [];
-const tempMatrix = new THREE.Matrix4();
-
-// Group chứa vật thể tương tác
-const interactableObjects = new THREE.Group();
-scene.add(interactableObjects);
-
-const levelGroup = new THREE.Group();
-scene.add(levelGroup);
-
-let controller1, controller2;
-let controllerGrip1, controllerGrip2;
-
-// ===== Gameplay Data =====
-const LEVELS = [
-    {
-        name: 'Primary',
-        colors: [
-            { id: 'red', name: 'Red', value: 0xff1e1e },
-            { id: 'yellow', name: 'Yellow', value: 0xfff200 },
-            { id: 'blue', name: 'Blue', value: 0x1e6bff }
-        ]
-    },
-    {
-        name: 'Secondary',
-        colors: [
-            { id: 'orange', name: 'Orange', value: 0xff8c1a },
-            { id: 'green', name: 'Green', value: 0x2ecc71 },
-            { id: 'purple', name: 'Purple', value: 0x8e44ad }
-        ]
-    },
-    {
-        name: 'Tertiary',
-        colors: [
-            { id: 'red-orange', name: 'Red-Orange', value: 0xff4d1a },
-            { id: 'yellow-orange', name: 'Yellow-Orange', value: 0xffb31a },
-            { id: 'yellow-green', name: 'Yellow-Green', value: 0x9ad51a },
-            { id: 'blue-green', name: 'Blue-Green', value: 0x1ab3a6 },
-            { id: 'blue-purple', name: 'Blue-Purple', value: 0x4b4bff },
-            { id: 'red-purple', name: 'Red-Purple', value: 0xc81aff }
-        ]
+  if(renderer.xr.isPresenting||xrMouseSim.enabled){
+    if(win&&typeof showXRVictoryArena==='function'){
+      showXRVictoryArena(elapsed);
+      return;
     }
-];
-
-const MODE = {
-    EASY: 'Easy',
-    HARD: 'Hard'
-};
-
-const timeLimits = [60, 75, 90];
-let currentMode = null;
-let currentLevelIndex = 0;
-let activeSlots = [];
-let activePieces = [];
-let levelStarted = false;
-let timer = 0;
-let lastFrameTime = performance.now();
-
-// ===== Audio (WebAudio synth) =====
-const listener = new THREE.AudioListener();
-camera.add(listener);
-let audioReady = false;
-let bgOsc = null;
-let bgGain = null;
-
-function initAudio() {
-    if (audioReady) return;
-    const context = listener.context;
-    bgGain = context.createGain();
-    bgGain.gain.value = 0.02;
-    bgGain.connect(context.destination);
-
-    bgOsc = context.createOscillator();
-    bgOsc.type = 'sine';
-    bgOsc.frequency.value = 140;
-    bgOsc.connect(bgGain);
-    bgOsc.start();
-    audioReady = true;
-}
-
-function playSfx(type) {
-    if (!audioReady) return;
-    const context = listener.context;
-    const osc = context.createOscillator();
-    const gain = context.createGain();
-    gain.gain.value = 0.05;
-    osc.connect(gain);
-    gain.connect(context.destination);
-
-    if (type === 'grab') {
-        osc.frequency.value = 440;
-    } else if (type === 'correct') {
-        osc.frequency.value = 660;
-    } else if (type === 'wrong') {
-        osc.frequency.value = 220;
-    } else if (type === 'level') {
-        osc.frequency.value = 880;
-    } else if (type === 'win') {
-        osc.frequency.value = 990;
+    if(!win&&typeof showXRDefeatArena==='function'){
+      showXRDefeatArena(elapsed);
+      return;
     }
+  }
 
-    osc.start();
-    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.2);
-    osc.stop(context.currentTime + 0.25);
+  document.getElementById('re').textContent=win?'🏆':'💀';
+  document.getElementById('rt').textContent=win?'CHIẾN THẮNG!':'HẾT THỜI GIAN!';
+  document.getElementById('rs').textContent=win?'Bạn hoàn thành cả 3 cấp độ!':'Dừng ở Level '+(G.lvIdx+1)+'. Thử lại!';
+  document.getElementById('rs-sc').textContent=G.score;
+  document.getElementById('rs-lv').textContent=(G.lvIdx+(win?1:0))+'/3';
+  document.getElementById('rs-cb').textContent='x'+G.maxCombo;
+  document.getElementById('rs-tm').textContent=m+':'+(s+'').padStart(2,'0');
+  document.getElementById('scr-result').classList.remove('off');
+  ['hud','prog-wrap','badge','hint'].forEach(id=>document.getElementById(id).style.display='none');
+  document.getElementById('aim-label').style.display='none';
+  document.getElementById('power-wrap').style.display='none';
+  aimCtx.clearRect(0,0,aimCanvas.width,aimCanvas.height);
 }
 
-// ===== UI =====
-function setStatus(text) {
-    ui.status.textContent = text;
+function selMode(m){
+  G.mode=m;
+  const modes=['easy','hard','special','archery'];
+  modes.forEach(k=>{
+    const el=document.getElementById('mc-'+k);
+    if(!el) return;
+    const selected=(k===m);
+    el.className='mc'+(selected?(k==='hard'?' sh':' se'):'' );
+  });
+  syncHoloPanel(LEVELS[G.lvIdx],G.selectedMb?G.selectedMb.cd:null);
+}
+function startGame(){
+  if(G.mode==='archery'&&!renderer.xr.isPresenting&&!xrMouseSim.enabled){
+    toast('ARCHERY là mode VR. Đang chuyển sang EASY trên desktop.', 'inf', 1700);
+    selMode('easy');
+  }
+  if(typeof hideXRArenas==='function') hideXRArenas();
+  else {
+    if(typeof hideXRVictoryArena==='function') hideXRVictoryArena();
+    if(typeof hideXRDefeatArena==='function') hideXRDefeatArena();
+  }
+  clearGameTimeouts();
+  resumeAC();G.lvIdx=0;G.score=0;G.combo=1;G.maxCombo=1;G.active=true;G.phase='idle';G.specialHidden=false;G.specialLocked=false;xrDragController=null;xrIngameMenuOpen=false;xrUiSliderDragController=null;xrUiView='main';updateXRUIViews();
+  document.getElementById('scr-menu').classList.add('off');
+  document.getElementById('scr-result').classList.add('off');
+  ['hud','prog-wrap'].forEach(id=>{document.getElementById(id).style.display=id==='hud'?'flex':'block';});
+  updateGameplayOverlayVisibility();
+  buildLevel();startAmb();
+}
+function showMenu(){
+  if(typeof hideXRArenas==='function') hideXRArenas();
+  else {
+    if(typeof hideXRVictoryArena==='function') hideXRVictoryArena();
+    if(typeof hideXRDefeatArena==='function') hideXRDefeatArena();
+  }
+  clearGameTimeouts();
+  G.active=false;xrDragController=null;xrIngameMenuOpen=false;xrUiSliderDragController=null;xrUiView='main';updateXRUIViews();clearLevel();clearInterval(G.timerInt);
+  document.getElementById('scr-result').classList.add('off');
+  document.getElementById('scr-menu').classList.remove('off');
+  ['hud','prog-wrap','badge','hint'].forEach(id=>document.getElementById(id).style.display='none');
+  startAmb();
+}
+window.selMode=selMode;window.startGame=startGame;window.showMenu=showMenu;
+function exitToMenu(){
+  clearGameTimeouts();
+  G.active=false;
+  xrIngameMenuOpen=false;
+  xrUiSliderDragController=null;
+  clearLevel();
+  clearInterval(G.timerInt);
+  showMenu();
 }
 
-function updateLabels() {
-    ui.modeLabel.textContent = `Mode: ${currentMode ?? '-'}`;
-    ui.levelLabel.textContent = `Level: ${currentLevelIndex + 1} (${LEVELS[currentLevelIndex].name})`;
-    ui.timerLabel.textContent = currentMode === MODE.HARD ? `Time: ${Math.max(0, Math.ceil(timer))}s` : 'Time: --';
-}
+let toastTmr;
+function toast(msg,tp,dur=2000){const e=document.getElementById('toast');e.textContent=msg;e.className='show '+tp;clearTimeout(toastTmr);toastTmr=setTimeout(()=>e.classList.remove('show'),dur);}
 
-ui.easyBtn.addEventListener('click', () => startGame(MODE.EASY));
-ui.hardBtn.addEventListener('click', () => startGame(MODE.HARD));
-ui.restartBtn.addEventListener('click', () => startGame(currentMode ?? MODE.EASY));
+let volEl=null;
 
-function startGame(mode) {
-    initAudio();
-    currentMode = mode;
-    currentLevelIndex = 0;
-    buildLevel(currentLevelIndex);
-    setStatus('Bắt đầu! Đặt màu đúng vị trí trên vòng tròn.');
-    updateLabels();
-}
+window.addEventListener('load',()=>{
+  const btnExit=document.getElementById('btn-exit');
+  if(btnExit) btnExit.onclick=()=>{exitToMenu();};
 
-// ===== Level Build =====
-const wheelCenter = new THREE.Vector3(0, 1.5, -1.8);
-const wheelRadius = 0.9;
-const slotRadius = 0.08;
-const snapDistance = 0.15;
-
-function clearLevel() {
-    while (levelGroup.children.length) levelGroup.remove(levelGroup.children[0]);
-    while (interactableObjects.children.length) interactableObjects.remove(interactableObjects.children[0]);
-    activeSlots = [];
-    activePieces = [];
-}
-
-function buildLevel(index) {
-    clearLevel();
-    const level = LEVELS[index];
-    const colorCount = level.colors.length;
-
-    const ring = new THREE.TorusGeometry(wheelRadius, 0.02, 16, 64);
-    const ringMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.6, metalness: 0.1 });
-    const ringMesh = new THREE.Mesh(ring, ringMat);
-    ringMesh.position.copy(wheelCenter);
-    ringMesh.rotation.x = Math.PI / 2;
-    levelGroup.add(ringMesh);
-
-    for (let i = 0; i < colorCount; i += 1) {
-        const angle = (i / colorCount) * Math.PI * 2;
-        const slotPos = new THREE.Vector3(
-            wheelCenter.x + Math.cos(angle) * wheelRadius,
-            wheelCenter.y + Math.sin(angle) * wheelRadius,
-            wheelCenter.z
-        );
-
-        const slotGeo = new THREE.TorusGeometry(slotRadius, 0.015, 12, 32);
-        const slotMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 });
-        const slotMesh = new THREE.Mesh(slotGeo, slotMat);
-        slotMesh.position.copy(slotPos);
-        slotMesh.rotation.x = Math.PI / 2;
-        slotMesh.userData = {
-            colorId: level.colors[i].id,
-            occupied: false,
-            position: slotPos.clone()
-        };
-        levelGroup.add(slotMesh);
-        activeSlots.push(slotMesh);
-    }
-
-    const spawnStart = new THREE.Vector3(-0.6, 1.1, -0.6);
-    const spawnGap = 0.25;
-    const sphereGeo = new THREE.SphereGeometry(0.06, 24, 24);
-
-    level.colors.forEach((color, i) => {
-        const mat = new THREE.MeshStandardMaterial({
-            color: color.value,
-            emissive: new THREE.Color(0x000000),
-            roughness: 0.3,
-            metalness: 0.1
-        });
-        const mesh = new THREE.Mesh(sphereGeo, mat);
-        mesh.position.set(
-            spawnStart.x + i * spawnGap,
-            spawnStart.y,
-            spawnStart.z
-        );
-        mesh.userData = {
-            colorId: color.id,
-            spawnPosition: mesh.position.clone(),
-            placed: false
-        };
-        interactableObjects.add(mesh);
-        activePieces.push(mesh);
+  volEl=document.getElementById('bgm-vol');
+  if(volEl){
+    volEl.value=String(Math.round(bgmVolume*100));
+    volEl.addEventListener('input',()=>{
+      bgmVolume=Math.max(0,Math.min(1,Number(volEl.value)/100));
+      applyBgmVolume();
+      updateXRVolumeBar();
     });
+  }
 
-    levelStarted = true;
-    timer = currentMode === MODE.HARD ? timeLimits[index] : 0;
-    updateLabels();
-}
+  const btnAudio=document.getElementById('btn-audio');
+  if(btnAudio){
+    btnAudio.addEventListener('click',()=>{
+      if(bgmVolume>0){
+        btnAudio.dataset.prevVol=String(bgmVolume);
+        bgmVolume=0;
+      }else{
+        bgmVolume=Number(btnAudio.dataset.prevVol||0.35);
+      }
+      if(volEl) volEl.value=String(Math.round(bgmVolume*100));
+      applyBgmVolume();
+      updateXRVolumeBar();
+      resumeAC();
+      startAmb();
+    });
+  }
 
-// ===== Controller Handling =====
-function onSelectStart(event) {
-    initAudio();
-    if (!levelStarted) return;
-    const controller = event.target;
-    const intersections = getIntersections(controller);
-
-    if (intersections.length > 0) {
-        const intersection = intersections[0];
-        const object = intersection.object;
-        if (object.userData.placed) return;
-
-        object.material.emissive.b = 0.5;
-        controller.attach(object);
-        controller.userData.selected = object;
-        playSfx('grab');
-    }
-}
-
-function onSelectEnd(event) {
-    const controller = event.target;
-    if (!levelStarted) return;
-    if (controller.userData.selected !== undefined) {
-        const object = controller.userData.selected;
-        object.material.emissive.b = 0;
-        scene.attach(object);
-        controller.userData.selected = undefined;
-
-        const target = getNearestSlot(object.position);
-        if (target && target.userData.colorId === object.userData.colorId && !target.userData.occupied) {
-            object.position.copy(target.userData.position);
-            object.userData.placed = true;
-            target.userData.occupied = true;
-            playSfx('correct');
-            checkLevelComplete();
-        } else {
-            object.position.copy(object.userData.spawnPosition);
-            playSfx('wrong');
-        }
-    }
-}
-
-function getNearestSlot(position) {
-    let nearest = null;
-    let minDist = Infinity;
-    for (const slot of activeSlots) {
-        const dist = slot.position.distanceTo(position);
-        if (dist < minDist) {
-            minDist = dist;
-            nearest = slot;
-        }
-    }
-    if (minDist <= snapDistance) return nearest;
-    return null;
-}
-
-function checkLevelComplete() {
-    const allPlaced = activePieces.every((p) => p.userData.placed);
-    if (!allPlaced) return;
-
-    playSfx('level');
-    if (currentLevelIndex < LEVELS.length - 1) {
-        currentLevelIndex += 1;
-        buildLevel(currentLevelIndex);
-        setStatus(`Level ${currentLevelIndex} hoàn thành! Mở khóa level tiếp theo.`);
-    } else {
-        levelStarted = false;
-        setStatus('Chiến thắng! Bạn đã hoàn thành Level 3.');
-        playSfx('win');
-    }
-    updateLabels();
-}
-
-function getIntersections(controller) {
-    tempMatrix.identity().extractRotation(controller.matrixWorld);
-    raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
-    raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
-    return raycaster.intersectObjects(interactableObjects.children, false);
-}
-
-function intersectObjects(controller) {
-    if (controller.userData.selected !== undefined) return;
-
-    const line = controller.getObjectByName('line');
-    const intersections = getIntersections(controller);
-
-    if (intersections.length > 0) {
-        const intersection = intersections[0];
-        const object = intersection.object;
-
-        object.material.emissive.r = 0.3;
-        intersected.push(object);
-        line.scale.z = intersection.distance / 5;
-    } else {
-        line.scale.z = 1;
-    }
-}
-
-function cleanIntersected() {
-    while (intersected.length) {
-        const object = intersected.pop();
-        object.material.emissive.r = 0;
-    }
-}
-
-// Controller setup
-controller1 = renderer.xr.getController(0);
-controller1.addEventListener('selectstart', onSelectStart);
-controller1.addEventListener('selectend', onSelectEnd);
-scene.add(controller1);
-
-controller2 = renderer.xr.getController(1);
-controller2.addEventListener('selectstart', onSelectStart);
-controller2.addEventListener('selectend', onSelectEnd);
-scene.add(controller2);
-
-const controllerModelFactory = new XRControllerModelFactory();
-
-controllerGrip1 = renderer.xr.getControllerGrip(0);
-controllerGrip1.add(controllerModelFactory.createControllerModel(controllerGrip1));
-scene.add(controllerGrip1);
-
-controllerGrip2 = renderer.xr.getControllerGrip(1);
-controllerGrip2.add(controllerModelFactory.createControllerModel(controllerGrip2));
-scene.add(controllerGrip2);
-
-const geometry = new THREE.BufferGeometry().setFromPoints([
-    new THREE.Vector3(0, 0, 0),
-    new THREE.Vector3(0, 0, -5)
-]);
-const material = new THREE.LineBasicMaterial({
-    color: 0xffffff,
-    transparent: true,
-    opacity: 0.5
+  applyBgmVolume();
+  updateXRVolumeBar();
 });
-const line = new THREE.Line(geometry, material);
-line.name = 'line';
-controller1.add(line.clone());
-controller2.add(line.clone());
 
-// Resize
-window.addEventListener('resize', onWindowResize, false);
-function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+// Mở rộng vùng nhận diện đích đến
+function findAimedSlot(){
+  ray.setFromCamera(mouse,camera);
+  const meshes=G.slots.filter(s=>!s.filled).map(s=>s.mesh);
+  const hits=ray.intersectObjects(meshes,false);
+  if(hits.length){
+    const mesh=hits[0].object;
+    return G.slots.find(s=>s.mesh===mesh&&!s.filled)||null;
+  }
+
+  // Fallback: Tự động bắt dính vào ô gần nhất trên màn hình (Vùng bắt cực rộng)
+  let best=null, bestDist=Infinity;
+  const maxDist = Math.max(innerWidth, innerHeight) * 0.25; // 25% màn hình
+  G.slots.forEach(s=>{
+    if(s.filled) return;
+    const wp=new THREE.Vector3(s.x,0,s.z);WG.localToWorld(wp);
+    const sp=worldToScreen(wp);
+    const dx=sp.x-mouseScreen.x, dy=sp.y-mouseScreen.y;
+    const d=Math.sqrt(dx*dx+dy*dy);
+    if(d < maxDist && d < bestDist){
+      bestDist=d;
+      best=s;
+    }
+  });
+  return best;
 }
 
-// Game Loop
-renderer.setAnimationLoop(function () {
-    const now = performance.now();
-    const delta = (now - lastFrameTime) / 1000;
-    lastFrameTime = now;
+function findNearestSlotForMarble(mb,maxDist=.95){
+  if(!mb) return null;
+  let best=null,bestD=Infinity;
+  G.slots.forEach(s=>{
+    if(s.filled) return;
+    const wp=new THREE.Vector3(s.x,0,s.z);WG.localToWorld(wp);
+    const d=mb.grp.position.distanceTo(wp);
+    if(d<maxDist&&d<bestD){bestD=d;best=s;}
+  });
+  return best;
+}
 
-    if (levelStarted && currentMode === MODE.HARD) {
-        timer -= delta;
-        if (timer <= 0) {
-            timer = 0;
-            levelStarted = false;
-            setStatus('Hết giờ! Nhấn Restart để thử lại.');
-            playSfx('wrong');
-        }
+function updateDraggedMarblePosition(clientX,clientY){
+  if(!G.selectedMb) return;
+  mouse.x = (clientX / innerWidth) * 2 - 1;
+  mouse.y = -(clientY / innerHeight) * 2 + 1;
+  ray.setFromCamera(mouse,camera);
+  if(ray.ray.intersectPlane(dragPlane,dragHit)){
+    G.selectedMb.grp.position.set(dragHit.x,.26,dragHit.z);
+  }
+}
+
+function finishDragDrop(slot){
+  if(!G.selectedMb) return false;
+  const mb=G.selectedMb;
+  setMarbleOutlineOpacity(mb,.08);
+  mb.grp.scale.setScalar(1);
+  G.selectedMb=null;
+  G.phase='idle';
+  G.aimSlot=null;
+  xrDragController=null;
+  cursor.classList.remove('aiming');
+  setAimUI(false);
+  aimCtx.clearRect(0,0,aimCanvas.width,aimCanvas.height);
+  if(!slot){
+    sfx.cancel();
+    animReturn(mb);
+    return false;
+  }
+  placeOrRejectMarble(mb,slot);
+  return true;
+}
+
+// ---- Xử lý Chuột / Cảm ứng ----
+function handleInputStart(clientX, clientY) {
+  if(xrMouseSim.enabled) return;
+  resumeAC();
+  if (!G.active) return;
+  if (G.mode==='archery') return;
+  if (G.mode==='special' && G.specialLocked) return;
+
+  hasDragged = false;
+  mouse.x = (clientX / innerWidth) * 2 - 1;
+  mouse.y = -(clientY / innerHeight) * 2 + 1;
+  mouseScreen = { x: clientX, y: clientY };
+
+  if (G.phase === 'dragging' && G.selectedMb) {
+    updateDraggedMarblePosition(clientX,clientY);
+    return;
+  }
+
+  ray.setFromCamera(mouse, camera);
+  const pickable = G.marbles.filter(m => !m.grp.userData.placed && !m.grp.userData.inFlight);
+  const hits = ray.intersectObjects(pickable.map(m => m.grp.userData.mm));
+
+  if (hits.length) {
+    const mb = G.marbles.find(m => m.grp.userData.mm === hits[0].object);
+    if (mb) {
+      if (G.selectedMb && G.selectedMb !== mb) {
+        setMarbleOutlineOpacity(G.selectedMb,.08);
+        G.selectedMb.grp.scale.setScalar(1);
+      }
+      G.selectedMb = mb;
+      G.phase = 'dragging';
+      setMarbleOutlineOpacity(mb,.5);
+      sfx.pick();
+      cursor.classList.add('aiming');
+      setAimUI(true, mb.cd);
+      updateDraggedMarblePosition(clientX,clientY);
+      return;
     }
+  }
+}
 
-    updateLabels();
-    cleanIntersected();
-    intersectObjects(controller1);
-    intersectObjects(controller2);
-    renderer.render(scene, camera);
+function handleInputMove(clientX, clientY) {
+  if(xrMouseSim.enabled) return;
+  if (G.mode==='archery') return;
+  mouse.x = (clientX / innerWidth) * 2 - 1;
+  mouse.y = -(clientY / innerHeight) * 2 + 1;
+  mouseScreen = { x: clientX, y: clientY };
+  cursor.style.left = clientX + 'px';
+  cursor.style.top = clientY + 'px';
+  tip.style.left = (clientX + 18) + 'px';
+  tip.style.top = (clientY - 8) + 'px';
+
+  if (G.phase === 'dragging' && G.selectedMb) {
+    hasDragged = true;
+    updateDraggedMarblePosition(clientX,clientY);
+    G.aimSlot=findNearestSlotForMarble(G.selectedMb,.95)||findAimedSlot();
+  }
+}
+
+function handleInputEnd() {
+  if(xrMouseSim.enabled) return;
+  if (G.mode==='archery') return;
+  if (G.mode==='special' && G.specialLocked) return;
+  if (!G.active || G.phase !== 'dragging' || !G.selectedMb) return;
+  const dropSlot = G.aimSlot || findNearestSlotForMarble(G.selectedMb,.95) || findAimedSlot();
+  finishDragDrop(dropSlot);
+}
+
+document.addEventListener('mousedown', e => {
+  if(!VR_DEV_MODE&&!xrMouseSim.enabled) return;
+  if(xrMouseSim.enabled){
+    if(e.button===0) onXRSelectStart({target:xrMouseSim.controller});
+    return;
+  }
+  if (e.button === 0) handleInputStart(e.clientX, e.clientY);
+});
+
+document.addEventListener('mousemove', e => {
+  if(!VR_DEV_MODE&&!xrMouseSim.enabled) return;
+  mouse.x = (e.clientX / innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / innerHeight) * 2 + 1;
+  mouseScreen = { x: e.clientX, y: e.clientY };
+  cursor.style.left = e.clientX + 'px';
+  cursor.style.top = e.clientY + 'px';
+  tip.style.left = (e.clientX + 18) + 'px';
+  tip.style.top = (e.clientY - 8) + 'px';
+  if(xrMouseSim.enabled){
+    updateXRMouseSimController();
+    return;
+  }
+  handleInputMove(e.clientX, e.clientY);
+});
+
+document.addEventListener('mouseup', e => {
+  if(!VR_DEV_MODE&&!xrMouseSim.enabled) return;
+  if(xrMouseSim.enabled){
+    if(e.button===0) onXRSelectEnd({target:xrMouseSim.controller});
+    return;
+  }
+  if (e.button === 0) handleInputEnd();
+});
+
+document.addEventListener('contextmenu', e=>{if(VR_DEV_MODE&&xrMouseSim.enabled)e.preventDefault();});
+
+document.addEventListener('touchstart', e => {
+  if(!VR_DEV_MODE) return;
+  if (e.target.tagName !== 'BUTTON' && e.target.id === 'c') e.preventDefault();
+  handleInputStart(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: false });
+
+document.addEventListener('touchmove', e => {
+  if(!VR_DEV_MODE) return;
+  if (e.target.id === 'c') e.preventDefault();
+  handleInputMove(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: false });
+
+document.addEventListener('touchend', () => {
+  if(!VR_DEV_MODE) return;
+  handleInputEnd();
+}, { passive: false });
+
+document.addEventListener('keydown', e => {
+  if(e.key==='F2'){
+    if(!VR_DEV_MODE) return;
+    e.preventDefault();
+    setXRMouseSimEnabled(!xrMouseSim.enabled);
+    return;
+  }
+  if(xrMouseSim.enabled&&(e.key==='r'||e.key==='R'||e.key==='t'||e.key==='T')){
+    tryXRMoveByTrigger(xrMouseSim.controller);
+    return;
+  }
+  if (e.key === 'Escape' && G.phase === 'dragging') {
+    if (G.selectedMb) { setMarbleOutlineOpacity(G.selectedMb,.08); G.selectedMb.grp.scale.setScalar(1); G.selectedMb = null; }
+    G.phase = 'idle'; cursor.classList.remove('aiming'); setAimUI(false);
+    xrDragController=null;
+    aimCtx.clearRect(0, 0, aimCanvas.width, aimCanvas.height); sfx.cancel();
+  }
 });
