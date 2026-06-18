@@ -1,5 +1,4 @@
 ﻿//  WHEEL GROUP
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const WG=new THREE.Group();scene.add(WG);
 const RING_R=2.8,SLOT_R=.32,MARBLE_R=.27;
 const MARBLE_RACK=new THREE.Group();scene.add(MARBLE_RACK);
@@ -21,9 +20,7 @@ const baseRing=new THREE.Mesh(new THREE.CylinderGeometry(RING_R+.4,RING_R+.5,.08
 baseRing.position.set(0,-.07,0);
 WG.add(baseRing);
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //  AIM CANVAS (2D overlay for trajectory)
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const aimCanvas=document.getElementById('aim-canvas');
 const aimCtx=aimCanvas.getContext('2d');
 // NgÄƒn khÃ´ng cho canvas cháº·n click cá»§a chuá»™t
@@ -32,9 +29,7 @@ aimCanvas.style.pointerEvents = 'none';
 function resizeAimCanvas(){aimCanvas.width=innerWidth;aimCanvas.height=innerHeight;}
 resizeAimCanvas();
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //  GAME STATE
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 let G={
   mode:'easy',lvIdx:0,score:0,combo:1,maxCombo:1,
   timer:0,timerInt:null,startTime:0,
@@ -80,6 +75,8 @@ const xrArcheryGravity=new THREE.Vector3(0,-7.2,0);
 const xrArcheryRay=new THREE.Raycaster();
 const xrArcheryPrevPos=new THREE.Vector3();
 const xrArcheryStepDir=new THREE.Vector3();
+const ARCHERY_PROJECTILE_TTL=4.2;
+const ARCHERY_PROJECTILE_FLOOR_PAD=.08;
 let lvDoneTmr=null;
 let lvAdvanceTmr=null;
 let endGameTmr=null;
@@ -1146,9 +1143,7 @@ function updateProg(){
   document.getElementById('prog-txt').textContent=done+' / '+tot+' bi đặt đúng';
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //  AIM CANVAS (2D overlay for trajectory)
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function worldToScreen(v3){
   const v=v3.clone().project(camera);
   return {x:(v.x+1)/2*aimCanvas.width, y:(-v.y+1)/2*aimCanvas.height};
@@ -1242,9 +1237,7 @@ function drawAimLine(mb, slot, hovering){
   aimCtx.restore();
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //  THROW BALL
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function throwBall(mb, slot){
   const slotWorld=new THREE.Vector3(slot.x,0,slot.z);
   WG.localToWorld(slotWorld);
@@ -1408,9 +1401,7 @@ function placeOrRejectMarble(mb, slot){
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //  INPUT HANDLING (DRAG & DROP)
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const ray = new THREE.Raycaster();
 const mouse = new THREE.Vector2(-9, -9);
 const cursor = document.getElementById('cursor');

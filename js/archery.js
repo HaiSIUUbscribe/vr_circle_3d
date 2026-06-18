@@ -220,6 +220,17 @@ function buildArcheryLevel(){
 
   const basePos=new THREE.Vector3(0,0,0);
   xrArchery.root.position.copy(basePos);
+  xrArchery.root.rotation.set(0,0,0);
+  if(renderer.xr.isPresenting||xrMouseSim.enabled){
+    const xrCam=renderer.xr.isPresenting?renderer.xr.getCamera(camera):camera;
+    xrCam.getWorldPosition(xrHeadPos);
+    xrCam.getWorldQuaternion(vrAlignQuat);
+    vrAlignForward.set(0,0,-1).applyQuaternion(vrAlignQuat).setY(0);
+    if(vrAlignForward.lengthSq()<1e-6) vrAlignForward.set(0,0,-1);
+    else vrAlignForward.normalize();
+    xrArchery.root.position.set(xrHeadPos.x,0,xrHeadPos.z);
+    xrArchery.root.rotation.y=Math.atan2(-vrAlignForward.x,-vrAlignForward.z);
+  }
   xrArchery.root.add(xrArchery.targetRig);
   xrArchery.root.add(xrArchery.tableRig);
   scene.add(xrArchery.root);
@@ -292,7 +303,7 @@ function buildArcheryLevel(){
   xrArchery.targetRig.add(centerDisc);
   xrArchery.rings.push(centerDisc);
 
-  const tablePos=new THREE.Vector3(0,.74,2.15);
+  const tablePos=new THREE.Vector3(0,.74,-.78);
   xrArchery.tableRig.position.copy(tablePos);
 
   const tableTop=new THREE.Mesh(
@@ -453,7 +464,11 @@ function updateArcheryProjectiles(dt){
   for(let i=xrArchery.projectiles.length-1;i>=0;i--){
     const p=xrArchery.projectiles[i];
     p.life+=dt;
-    if(p.life>6){scene.remove(p.mesh);xrArchery.projectiles.splice(i,1);continue;}
+    if(p.life>ARCHERY_PROJECTILE_TTL){
+      removeAndDispose(scene,p.mesh);
+      xrArchery.projectiles.splice(i,1);
+      continue;
+    }
 
     xrArcheryPrevPos.copy(p.mesh.position);
     p.vel.addScaledVector(xrArcheryGravity,dt*(1+p.mass*.28));
@@ -472,14 +487,16 @@ function updateArcheryProjectiles(dt){
       const hits=xrArcheryRay.intersectObjects(xrArchery.rings,false);
       if(hits.length&&hits[0].distance<=stepLen+.02){
         resolveArcheryHit(p,hits[0].object,hits[0].point.clone());
-        scene.remove(p.mesh);
+        removeAndDispose(scene,p.mesh);
         xrArchery.projectiles.splice(i,1);
         continue;
       }
     }
 
-    if(p.mesh.position.y<-2.1){
-      scene.remove(p.mesh);
+    const floorY=(typeof WORLD_FLOOR_Y==='number'?WORLD_FLOOR_Y:-.18)+ARCHERY_PROJECTILE_FLOOR_PAD;
+    if(p.mesh.position.y<=floorY&&p.vel.y<=0){
+      spawnParticles(p.mesh.position.clone(),p.cd?p.cd.hex:'#8ee8ff',false);
+      removeAndDispose(scene,p.mesh);
       xrArchery.projectiles.splice(i,1);
     }
   }
@@ -523,6 +540,3 @@ function updateArcheryMode(dt,t){
     }
   }
 }
-
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
