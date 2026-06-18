@@ -16,10 +16,28 @@ function isXRInteractiveVisible(obj){
   return true;
 }
 
+const VR_MOVE_RADIUS = 6.35;
+let xrMoveRejectToastAt = 0;
+
+function isVRMovePointAllowed(point){
+  if(!point) return false;
+  const cx=ancientEnv?ancientEnv.position.x:WG.position.x;
+  const cz=ancientEnv?ancientEnv.position.z:WG.position.z;
+  const dx=point.x-cx;
+  const dz=point.z-cz;
+  return dx*dx+dz*dz <= VR_MOVE_RADIUS*VR_MOVE_RADIUS;
+}
+
+function warnVRMoveRejected(){
+  const now=performance.now();
+  if(now-xrMoveRejectToastAt<900) return;
+  xrMoveRejectToastAt=now;
+  toast('Grip: vị trí ngoài sàn chơi', 'err', 850);
+}
+
 function onXRSelectStart(e){
   resumeAC();
   const controller=e.target;
-  const isMouseSimController=(xrMouseSim.enabled&&controller===xrMouseSim.controller);
   if((renderer.xr.isPresenting||xrMouseSim.enabled)&&xrInteractiveButtons.length){
     const uiHits=getControllerIntersections(controller,xrInteractiveButtons.filter(isXRInteractiveVisible));
     if(uiHits.length){
@@ -37,7 +55,6 @@ function onXRSelectStart(e){
 
   if(G.mode==='archery'){
     if((renderer.xr.isPresenting||xrMouseSim.enabled)&&tryXRArcherySelectStart(controller)) return;
-    if(renderer.xr.isPresenting&&!isMouseSimController&&tryXRMoveByTrigger(controller)) return;
     return;
   }
 
@@ -47,7 +64,6 @@ function onXRSelectStart(e){
     const pickable=G.marbles.filter(m=>!m.grp.userData.placed&&!m.grp.userData.inFlight);
     const hits=getControllerIntersections(controller,pickable.map(m=>m.grp.userData.mm));
     if(!hits.length){
-      if(renderer.xr.isPresenting&&!isMouseSimController&&tryXRMoveByTrigger(controller)) return;
       return;
     }
     const mb=G.marbles.find(m=>m.grp.userData.mm===hits[0].object);
@@ -67,7 +83,7 @@ function onXRSelectStart(e){
     return;
   }
 
-  if(renderer.xr.isPresenting&&!isMouseSimController&&tryXRMoveByTrigger(controller)) return;
+  return;
 }
 
 function onXRSelectEnd(e){
@@ -163,6 +179,10 @@ function onXRSqueezeStart(e){
   const controller=e.target;
   const point=getControllerTeleportPoint(controller);
   if(!point) return;
+  if(!isVRMovePointAllowed(point)){
+    warnVRMoveRejected();
+    return;
+  }
 
   if(renderer.xr.isPresenting) renderer.xr.getCamera(camera).getWorldPosition(xrHeadPos);
   else camera.getWorldPosition(xrHeadPos);
@@ -177,6 +197,10 @@ function tryXRMoveByTrigger(controller){
   if(G.phase==='dragging'&&G.selectedMb) return false;
   const point=getControllerTeleportPoint(controller);
   if(!point) return false;
+  if(!isVRMovePointAllowed(point)){
+    warnVRMoveRejected();
+    return true;
+  }
   if(renderer.xr.isPresenting) renderer.xr.getCamera(camera).getWorldPosition(xrHeadPos);
   else camera.getWorldPosition(xrHeadPos);
   const dx=-(point.x-xrHeadPos.x);

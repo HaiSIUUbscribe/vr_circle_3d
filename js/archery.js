@@ -160,13 +160,19 @@ function releaseArcheryHeldArrow(shoot=false){
     scene.attach(held);
     const arrowPos=new THREE.Vector3().setFromMatrixPosition(ctrl.matrixWorld);
     const bowPos=new THREE.Vector3().setFromMatrixPosition(xrArchery.bowHoldController.matrixWorld);
-    tempMatrix.identity().extractRotation(ctrl.matrixWorld);
-    const fwd=new THREE.Vector3(0,0,-1).applyMatrix4(tempMatrix).normalize();
-    const dir=new THREE.Vector3().subVectors(bowPos,arrowPos).normalize().lerp(fwd,.42).normalize();
-    const strength=Math.max(.06,Math.min(1,xrArchery.pullStrength));
+    const targetPos=new THREE.Vector3().setFromMatrixPosition(xrArchery.targetRig.matrixWorld);
+    const targetDir=new THREE.Vector3().subVectors(targetPos,bowPos).normalize();
+    const pullVec=new THREE.Vector3().subVectors(bowPos,arrowPos);
+    const pullDistance=pullVec.length();
+    tempMatrix.identity().extractRotation(xrArchery.bowHoldController.matrixWorld);
+    const bowFwd=new THREE.Vector3(0,0,-1).applyMatrix4(tempMatrix).normalize();
+    const dir=pullDistance>.05 ? pullVec.normalize() : bowFwd;
+    if(dir.dot(targetDir)<.2) dir.lerp(targetDir,.72).normalize();
+    else dir.lerp(targetDir,.24).normalize();
+    const strength=Math.max(.18,Math.min(1,Math.max(xrArchery.pullStrength,(pullDistance-.14)/.5)));
     const mass=.9+Math.random()*.45;
-    const speed=8.2+strength*13.8;
-    held.position.copy(arrowPos).addScaledVector(dir,.1);
+    const speed=10.5+strength*16.5;
+    held.position.copy(bowPos).addScaledVector(dir,.14);
     held.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.clone().normalize());
     xrArchery.projectiles.push({
       mesh:held,

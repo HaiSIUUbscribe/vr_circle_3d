@@ -1600,6 +1600,9 @@ function updateXRUITransform(){
     const targetOpen=xrIngameMenuOpen?1:0;
     xrUiOpenAnim+=(targetOpen-xrUiOpenAnim)*.2;
     xrUiPanel.visible=xrUiOpenAnim>.03;
+    if(xrIngameMenuOpen&&xrWristHud){
+      xrWristHud.visible=false;
+    }
     if(xrUiToggleGroup.visible){
       xrUiTargetPos.copy(xrUiCamPos)
         .addScaledVector(xrUiWorldForward,.72)
@@ -1656,6 +1659,15 @@ function setXRUIButtonHover(mesh,hovered){
 }
 
 function applyXRUIAction(action){
+  function startXRMode(mode,label){
+    selMode(mode);
+    xrIngameMenuOpen=false;
+    xrUiView='main';
+    updateXRUIViews();
+    startGame();
+    toast('Đã chọn '+label, 'inf', 700);
+  }
+
   if(action==='victory-menu'){hideXRVictoryArena();showMenu();return;}
   if(action==='victory-replay'){hideXRVictoryArena();startGame();return;}
   if(action==='defeat-menu'){hideXRDefeatArena();showMenu();return;}
@@ -1673,27 +1685,19 @@ function applyXRUIAction(action){
   if(action==='ui-quit-game'){exitToMenu();toast('Đã thoát về menu', 'inf', 900);return;}
   if(action==='vol-slider') return;
   if(action==='mode-easy'){
-    selMode('easy');
-    toast('Đã chọn EASY', 'inf', 700);
-    if(!G.active) startGame();
+    startXRMode('easy','EASY');
     return;
   }
   if(action==='mode-hard'){
-    selMode('hard');
-    toast('Đã chọn HARD', 'inf', 700);
-    if(!G.active) startGame();
+    startXRMode('hard','HARD');
     return;
   }
   if(action==='mode-special'){
-    selMode('special');
-    toast('Đã chọn SPECIAL', 'inf', 700);
-    if(!G.active) startGame();
+    startXRMode('special','SPECIAL');
     return;
   }
   if(action==='mode-archery'){
-    selMode('archery');
-    toast('Đã chọn ARCHERY', 'inf', 700);
-    if(!G.active) startGame();
+    startXRMode('archery','ARCHERY');
     return;
   }
   if(action&&action.indexOf('archery-select-')===0){

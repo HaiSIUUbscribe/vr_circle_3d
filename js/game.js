@@ -446,15 +446,15 @@ function ensureXRWristHud(){
 
   const menuTex=makeXRButtonTexture('MENU','#113241','#c9f4ff');
   xrWristMenuButton=new THREE.Mesh(
-    new THREE.PlaneGeometry(.16,.06),
+    new THREE.PlaneGeometry(.15,.055),
     new THREE.MeshBasicMaterial({map:menuTex,transparent:true,opacity:.96,depthTest:false,depthWrite:false})
   );
-  xrWristMenuButton.position.set(.2,-.018,.018);
+  xrWristMenuButton.position.set(.17,-.072,.065);
   xrWristMenuButton.userData.xrUiAction='ui-toggle';
   xrWristMenuButton.userData.xrUiBaseOpacity=.96;
   xrWristMenuButton.userData.xrUiBaseScale=1;
   xrWristMenuButton.renderOrder=10002;
-  xrWristHudPanelRig.add(xrWristMenuButton);
+  xrWristHud.add(xrWristMenuButton);
   xrInteractiveButtons.push(xrWristMenuButton);
 
   xrWristHud.renderOrder=9998;
@@ -489,6 +489,9 @@ function updateXRWristHudTransform(){
     if(xrWristHudPanelRig){
       xrWristHudPanelRig.lookAt(xrUiCamPos.x,xrUiCamPos.y-.02,xrUiCamPos.z);
     }
+    if(xrWristMenuButton){
+      xrWristMenuButton.lookAt(xrUiCamPos.x,xrUiCamPos.y-.02,xrUiCamPos.z);
+    }
     return;
   }
 
@@ -505,6 +508,9 @@ function updateXRWristHudTransform(){
 
   if(xrWristHudPanelRig){
     xrWristHudPanelRig.lookAt(xrUiCamPos.x,xrUiCamPos.y-.02,xrUiCamPos.z);
+  }
+  if(xrWristMenuButton){
+    xrWristMenuButton.lookAt(xrUiCamPos.x,xrUiCamPos.y-.02,xrUiCamPos.z);
   }
   if(xrWristHudGlow&&xrWristHudGlow.material){
     xrWristHudGlow.material.opacity=.1+Math.sin(performance.now()*.0023)*.03;
