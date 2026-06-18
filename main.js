@@ -123,8 +123,8 @@ function selMode(m){
 }
 function startGame(){
   if(G.mode==='archery'&&!renderer.xr.isPresenting&&!xrMouseSim.enabled){
-    toast('ARCHERY là mode VR. Đang chuyển sang EASY trên desktop.', 'inf', 1700);
-    selMode('easy');
+    toast('ARCHERY cần vào VR hoặc bật giả lập VR Controller.', 'err', 1800);
+    return false;
   }
   if(typeof hideXRArenas==='function') hideXRArenas();
   else {
@@ -138,6 +138,7 @@ function startGame(){
   ['hud','prog-wrap'].forEach(id=>{document.getElementById(id).style.display=id==='hud'?'flex':'block';});
   updateGameplayOverlayVisibility();
   buildLevel();startAmb();
+  return true;
 }
 function showMenu(){
   if(typeof hideXRArenas==='function') hideXRArenas();

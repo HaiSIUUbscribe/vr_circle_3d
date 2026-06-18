@@ -1664,8 +1664,8 @@ function applyXRUIAction(action){
     xrIngameMenuOpen=false;
     xrUiView='main';
     updateXRUIViews();
-    startGame();
-    toast('Đã chọn '+label, 'inf', 700);
+    const started=startGame();
+    if(started!==false) toast('Đã chọn '+label, 'inf', 700);
   }
 
   if(action==='victory-menu'){hideXRVictoryArena();showMenu();return;}
