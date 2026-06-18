@@ -9,12 +9,19 @@
   }
 }
 
+function isXRInteractiveVisible(obj){
+  for(let n=obj;n;n=n.parent){
+    if(!n.visible) return false;
+  }
+  return true;
+}
+
 function onXRSelectStart(e){
   resumeAC();
   const controller=e.target;
   const isMouseSimController=(xrMouseSim.enabled&&controller===xrMouseSim.controller);
   if((renderer.xr.isPresenting||xrMouseSim.enabled)&&xrInteractiveButtons.length){
-    const uiHits=getControllerIntersections(controller,xrInteractiveButtons.filter(b=>b.visible&&b.parent&&b.parent.visible));
+    const uiHits=getControllerIntersections(controller,xrInteractiveButtons.filter(isXRInteractiveVisible));
     if(uiHits.length){
       if(uiHits[0].object===xrUiVolumeSliderHit){
         xrUiSliderDragController=controller;
@@ -30,16 +37,7 @@ function onXRSelectStart(e){
 
   if(G.mode==='archery'){
     if((renderer.xr.isPresenting||xrMouseSim.enabled)&&tryXRArcherySelectStart(controller)) return;
-    if(renderer.xr.isPresenting&&!isMouseSimController&&controller.userData&&controller.userData.handedness==='left'&&G.phase!=='dragging'){
-      toggleXRIngameMenu();
-      return;
-    }
     if(renderer.xr.isPresenting&&!isMouseSimController&&tryXRMoveByTrigger(controller)) return;
-    return;
-  }
-
-  if(renderer.xr.isPresenting&&!isMouseSimController&&controller.userData&&controller.userData.handedness==='left'&&G.phase!=='dragging'){
-    toggleXRIngameMenu();
     return;
   }
 
@@ -64,7 +62,7 @@ function onXRSelectStart(e){
     setMarbleOutlineOpacity(mb,.5);
     sfx.pick();
     setAimUI(true,mb.cd);
-    toast('ÄÃ£ chá»n '+mb.cd.name+' Â· Giá»¯ trigger Ä‘á»ƒ ngáº¯m, tháº£ trigger Ä‘á»ƒ Ä‘áº·t', 'inf', 1400);
+    toast('Đã chọn '+mb.cd.name+' · Giữ trigger để ngắm, thả trigger để đặt', 'inf', 1400);
     updateXRDragFromController(controller);
     return;
   }
@@ -171,7 +169,7 @@ function onXRSqueezeStart(e){
   const dx=-(point.x-xrHeadPos.x);
   const dz=-(point.z-xrHeadPos.z);
   shiftPlayArea(dx,dz);
-  toast('VR: ÄÃ£ di chuyá»ƒn tá»›i vá»‹ trÃ­ ngáº¯m', 'inf', 900);
+  toast('VR: Đã di chuyển tới vị trí ngắm', 'inf', 900);
 }
 
 function tryXRMoveByTrigger(controller){
@@ -184,7 +182,7 @@ function tryXRMoveByTrigger(controller){
   const dx=-(point.x-xrHeadPos.x);
   const dz=-(point.z-xrHeadPos.z);
   shiftPlayArea(dx,dz);
-  toast('VR: Trigger Ä‘á»ƒ di chuyá»ƒn', 'inf', 700);
+  toast('VR: Trigger để di chuyển', 'inf', 700);
   return true;
 }
 
@@ -218,7 +216,7 @@ function updateXRHover(){
     setXRControllerHoverVisual(controller,false);
     if(!renderer.xr.isPresenting&&!xrMouseSim.enabled){line.scale.z=1;if(line.userData.tip) line.userData.tip.position.z=-5;return;}
 
-    const hitTargets=xrInteractiveButtons.filter(b=>b.visible&&b.parent&&b.parent.visible);
+    const hitTargets=xrInteractiveButtons.filter(isXRInteractiveVisible);
     const uiHits=hitTargets.length?getControllerIntersections(controller,hitTargets):[];
     if(uiHits.length){
       const hit=uiHits[0];
@@ -325,15 +323,52 @@ function setXRMouseSimEnabled(enabled){
     if(xrDragController===xrMouseSim.controller&&G.phase==='dragging'&&G.selectedMb){
       onXRSelectEnd({target:xrMouseSim.controller});
     }
-    setXRStatus('ÄÃ£ táº¯t giáº£ láº­p VR Controller báº±ng chuá»™t');
+    setXRStatus('Đã tắt giả lập VR Controller bằng chuột');
     return;
   }
 
   mouse.x=0;
   mouse.y=0;
   updateXRMouseSimController();
-  setXRStatus('Giáº£ láº­p VR Controller ON Â· Chuá»™t trÃ¡i=Trigger Â· R/T=Di chuyá»ƒn Â· F2=táº¯t','ok');
-  toast('Giáº£ láº­p VR ON', 'inf', 900);
+  setXRStatus('Giả lập VR Controller ON · Chuột trái=Trigger · R/T=Di chuyển · F2=tắt','ok');
+  toast('Giả lập VR ON', 'inf', 900);
+}
+
+function createXRControllerHandle(handedness){
+  const g=new THREE.Group();
+  g.name='xr-controller-handle';
+  const isLeft=handedness==='left';
+  const bodyMat=new THREE.MeshStandardMaterial({
+    color:isLeft?0x203a55:0x3d284f,
+    roughness:.34,
+    metalness:.45,
+    emissive:isLeft?0x082236:0x22082d,
+    emissiveIntensity:.35
+  });
+  const accentMat=new THREE.MeshBasicMaterial({
+    color:isLeft?0x73eaff:0xff9cff,
+    transparent:true,
+    opacity:.72,
+    blending:THREE.AdditiveBlending,
+    depthWrite:false
+  });
+  const grip=new THREE.Mesh(new THREE.CylinderGeometry(.026,.032,.18,16),bodyMat);
+  grip.rotation.x=Math.PI*.5;
+  grip.position.set(0,-.015,.04);
+  g.add(grip);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.04,18,14),bodyMat);
+  head.scale.set(1,.78,1.18);
+  head.position.set(0,.005,-.045);
+  g.add(head);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(.052,.006,8,28),accentMat);
+  ring.rotation.x=Math.PI*.5;
+  ring.position.set(0,.006,-.045);
+  g.add(ring);
+  const trigger=new THREE.Mesh(new THREE.BoxGeometry(.018,.035,.012),accentMat);
+  trigger.position.set(0,-.038,-.035);
+  g.add(trigger);
+  g.traverse(o=>{if(o.isMesh) o.renderOrder=9997;});
+  return g;
 }
 
 function setupXRControllers(){
@@ -358,6 +393,7 @@ function setupXRControllers(){
     tipDot.position.z=-5;
     tipDot.renderOrder=9999;
     line.userData.tip=tipDot;
+    c.add(createXRControllerHandle(c.userData.handedness));
     c.add(tipDot);
     c.add(line);
     c.addEventListener('connected',e=>{
@@ -410,4 +446,5 @@ function getControllerAimedSlot(controller){
 }
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
 

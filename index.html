@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Color Circle â€” Throw Mode</title>
+<title>Color Circle - Throw Mode</title>
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -16,34 +16,34 @@
 <div id="hud" style="display:flex">
   <div class="hpanel">
     <div class="hc"><span class="hl">Level</span><span class="hv" id="hv-lv" style="color:#00f5ff">1/3</span></div>
-    <div class="hc"><span class="hl">Äiá»ƒm</span><span class="hv" id="hv-sc" style="color:#ffd700">0</span></div>
+    <div class="hc"><span class="hl">Điểm</span><span class="hv" id="hv-sc" style="color:#ffd700">0</span></div>
     <div class="hc"><span class="hl">Combo</span><span class="hv" id="hv-cb" style="color:#ff9500">x1</span></div>
-    <div class="hc"><span class="hl">ÄÃºng</span><span class="hv" id="hv-co" style="color:#00ff88">0</span></div>
+    <div class="hc"><span class="hl">Đúng</span><span class="hv" id="hv-co" style="color:#00ff88">0</span></div>
   </div>
   <div id="hud-right">
     <div class="hpanel" id="audio-panel">
       <div class="hc" style="gap:4px;display:flex;">
-        <button class="btn3d" id="btn-audio" title="Báº­t/Táº¯t nháº¡c"><i class="fa-solid fa-volume-high"></i></button>
+        <button class="btn3d" id="btn-audio" title="Bật/Tắt nhạc"><i class="fa-solid fa-volume-high"></i></button>
         <input id="bgm-vol" type="range" min="0" max="100" value="35" style="width:110px;accent-color:#00f5ff;">
       </div>
     </div>
     <div class="hpanel">
-      <div class="hc"><span class="hl">Thá»i Gian</span><span class="hv" id="hv-tm" style="display:inline-flex;align-items:center;gap:6px;"><i id="hv-tm-icon" class="fa-solid fa-infinity" style="color:#00f5ff;"></i><span id="hv-tm-val"></span></span></div>
+      <div class="hc"><span class="hl">Thời Gian</span><span class="hv" id="hv-tm" style="display:inline-flex;align-items:center;gap:6px;"><i id="hv-tm-icon" class="fa-solid fa-infinity" style="color:#00f5ff;"></i><span id="hv-tm-val"></span></span></div>
       <div class="hc"><button class="btn3d" id="btn-exit"><i class="fas fa-times"></i></button></div>
     </div>
   </div>
 </div>
 
-<div id="badge">LEVEL 1 â€” PRIMARY</div>
+<div id="badge">LEVEL 1 - PRIMARY</div>
 
 <div id="aim-label">
-  <div><i class="fas fa-bullseye" style="color:#ff0000"></i> NGáº®M VÃ€O Ã” MÃ€U</div>
+  <div><i class="fas fa-bullseye" style="color:#ff0000"></i> NGẮM VÀO Ô MÀU</div>
   <div id="aim-target-name">RED</div>
-  <div style="font-size:.58rem;margin-top:6px;color:rgba(255,255,255,.3)">Tháº£ chuá»™t Ä‘á»ƒ nÃ©m Â· ESC há»§y</div>
+  <div style="font-size:.58rem;margin-top:6px;color:rgba(255,255,255,.3)">Thả chuột để ném · ESC hủy</div>
 </div>
 
 <div id="power-wrap">
-  <div id="power-label">Lá»°C NÃ‰M</div>
+  <div id="power-label">LỰC NÉM</div>
   <div id="power-bar"><div id="power-fill"></div></div>
 </div>
 
@@ -53,44 +53,44 @@
   <div id="prog-bar"><div id="prog-fill"></div></div>
   <div id="prog-txt">0 / 3</div>
 </div>
-<div id="hint"><i class="fa-solid fa-computer-mouse"></i> Click hoáº·c KÃ©o bi Ä‘á»ƒ ngáº¯m Â· Tháº£ ra Ä‘á»ƒ nÃ©m vÃ o Ã´ tÆ°Æ¡ng á»©ng</div>
+<div id="hint"><i class="fa-solid fa-computer-mouse"></i> Click hoặc kéo bi để ngắm · Thả ra để ném vào ô tương ứng</div>
 
 <div class="overlay" id="scr-menu">
   <div class="panel">
     <h1>COLOR CIRCLE</h1>
-    <div class="sub">3D Â· THROW & MATCH</div>
+    <div class="sub">3D · THROW & MATCH</div>
     <p style="font-size:.8rem;color:rgba(255,255,255,.4);line-height:1.9;margin-bottom:20px">
-      Chá»n bi mÃ u â†’ Ngáº¯m vÃ o Ã´ tÆ°Æ¡ng á»©ng trÃªn vÃ²ng trÃ²n<br>
-      ÄÆ°á»ng ngáº¯m hiá»ƒn thá»‹ quá»¹ Ä‘áº¡o nÃ©m Â· Combo tÄƒng Ä‘iá»ƒm
+      Chọn bi màu → Ngắm vào ô tương ứng trên vòng tròn<br>
+      Đường ngắm hiển thị quỹ đạo ném · Combo tăng điểm
     </p>
     <div class="mc-row">
-      <div class="mc se" id="mc-easy" onclick="selMode('easy')"><div class="mi"><i class="fa-solid fa-tree" style="color:#33FF33;"></i></div><div class="mn" style="color:#00ff88">EASY</div><div class="md">KhÃ´ng giá»›i háº¡n thá»i gian</div></div>
-      <div class="mc" id="mc-hard" onclick="selMode('hard')"><div class="mi"><i class="fa-solid fa-bolt" style="color:#ffff00"></i></div><div class="mn" style="color:#ff2d78">HARD</div><div class="md">Äua vá»›i Ä‘á»“ng há»“ Ä‘áº¿m ngÆ°á»£c</div></div>
-      <div class="mc" id="mc-special" onclick="selMode('special')"><div class="mi"><i class="fa-solid fa-brain" style="color:#ef4056"></i></div><div class="mn" style="color:#00f5ff">SPECIAL</div><div class="md">Ghi nhá»› vá»‹ trÃ­ mÃ u, sai sáº½ reset level</div></div>
-      <div class="mc" id="mc-archery" onclick="selMode('archery')"><div class="mi"><i class="fa-solid fa-bullseye" style="color:#8ee8ff"></i></div><div class="mn" style="color:#8ee8ff">ARCHERY</div><div class="md">VR báº¯n mÅ©i tÃªn mÃ u vÃ o bia</div></div>
+      <div class="mc se" id="mc-easy" onclick="selMode('easy')"><div class="mi"><i class="fa-solid fa-tree" style="color:#33FF33;"></i></div><div class="mn" style="color:#00ff88">EASY</div><div class="md">Không giới hạn thời gian</div></div>
+      <div class="mc" id="mc-hard" onclick="selMode('hard')"><div class="mi"><i class="fa-solid fa-bolt" style="color:#ffff00"></i></div><div class="mn" style="color:#ff2d78">HARD</div><div class="md">Đua với đồng hồ đếm ngược</div></div>
+      <div class="mc" id="mc-special" onclick="selMode('special')"><div class="mi"><i class="fa-solid fa-brain" style="color:#ef4056"></i></div><div class="mn" style="color:#00f5ff">SPECIAL</div><div class="md">Ghi nhớ vị trí màu, sai sẽ reset level</div></div>
+      <div class="mc" id="mc-archery" onclick="selMode('archery')"><div class="mi"><i class="fa-solid fa-bullseye" style="color:#8ee8ff"></i></div><div class="mn" style="color:#8ee8ff">ARCHERY</div><div class="md">VR bắn mũi tên màu vào bia</div></div>
     </div>
     <div class="lvl-prev">
       <div class="lp"><div class="lp-n" style="color:#ff6b6b">LEVEL 1</div><div class="lp-t"><i class="fa-solid fa-circle" style="color:#ff0000"></i> <i class="fa-solid fa-circle" style="color:#0055ff"></i> <i class="fa-solid fa-circle" style="color:#ffff00"></i> Primary</div></div>
       <div class="lp"><div class="lp-n" style="color:#c45eff">LEVEL 2</div><div class="lp-t"><i class="fa-solid fa-palette" style="color: #ff2d78;"></i> Secondary</div></div>
       <div class="lp"><div class="lp-n" style="color:#00f5ff">LEVEL 3</div><div class="lp-t"><i class="fa-solid fa-star" style="color: #ffff00;"></i> Tertiary</div></div>
     </div>
-    <button class="btng" onclick="startGame()"><i class="fa-solid fa-play"></i> Báº®T Äáº¦U</button>
+    <button class="btng" onclick="startGame()"><i class="fa-solid fa-play"></i> BẮT ĐẦU</button>
   </div>
 </div>
 
 <div class="overlay off" id="scr-result">
   <div class="panel">
     <span class="r-emoji"><i id="re" class="bi bi-trophy-fill"></i></span>
-    <div class="r-title" id="rt" style="background:linear-gradient(135deg,#ffd700,#ff9500);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent">CHIáº¾N THáº®NG!</div>
-    <div class="r-sub" id="rs">Báº¡n hoÃ n thÃ nh cáº£ 3 cáº¥p Ä‘á»™!</div>
+    <div class="r-title" id="rt" style="background:linear-gradient(135deg,#ffd700,#ff9500);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent">CHIẾN THẮNG!</div>
+    <div class="r-sub" id="rs">Bạn hoàn thành cả 3 cấp độ!</div>
     <div class="stats">
-      <div class="stat"><div class="sn" id="rs-sc" style="color:#ffd700">0</div><div class="sl">Äiá»ƒm</div></div>
+      <div class="stat"><div class="sn" id="rs-sc" style="color:#ffd700">0</div><div class="sl">Điểm</div></div>
       <div class="stat"><div class="sn" id="rs-lv" style="color:#00f5ff">3/3</div><div class="sl">Level</div></div>
       <div class="stat"><div class="sn" id="rs-cb" style="color:#ff9500">x1</div><div class="sl">Max Combo</div></div>
-      <div class="stat"><div class="sn" id="rs-tm" style="color:#a855f7">0:00</div><div class="sl">Thá»i Gian</div></div>
+      <div class="stat"><div class="sn" id="rs-tm" style="color:#a855f7">0:00</div><div class="sl">Thời Gian</div></div>
     </div>
     <div class="brow">
-      <button class="btng" onclick="startGame()"><i class="fa-solid fa-arrow-rotate-right"></i> CHÆ I Láº I</button>
+      <button class="btng" onclick="startGame()"><i class="fa-solid fa-arrow-rotate-right"></i> CHƠI LẠI</button>
       <button class="btnb" onclick="showMenu()"><i class="fa-solid fa-house"></i> MENU</button>
     </div>
   </div>

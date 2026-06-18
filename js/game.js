@@ -87,7 +87,7 @@ let specialHideTmr=null;
 let specialGuideInt=null;
 
 function getLevelShortName(badge){
-  return (badge.split('â€”')[1]||badge.split('-').slice(1).join('-')||badge).trim();
+  return (badge.split('-').slice(1).join('-')||badge).trim();
 }
 
 function getHoloGuideLines(lv=LEVELS[G.lvIdx],targetCd=null){
@@ -96,24 +96,24 @@ function getHoloGuideLines(lv=LEVELS[G.lvIdx],targetCd=null){
 
   if(G.mode==='archery'){
     return [
-      'Left trigger: hold the bow. Right trigger: take an arrow.',
-      'Pull right hand away from left hand, then release right trigger to shoot.',
+      'Left trigger: hold bow. Right trigger: pull arrow.',
+      'Release right trigger to shoot. Grip: move.',
       targetCd
-        ? 'Target color: '+targetCd.name+'. Left trigger away from bow opens menu.'
-        : 'Match arrow color to target color. Left trigger away from bow opens menu.'
+        ? 'Target color: '+targetCd.name+'. Aim at wrist MENU to open menu.'
+        : 'Match arrow color to target color. Aim at wrist MENU to open menu.'
     ];
   }
 
   return [
-    'Chon bi trong marble rack de kich hoat duong nem.',
-    'Giá»¯ vÃ  kÃ©o tháº£ vÃ o Ã´ cÃ¹ng mÃ u.',
+    'Chọn bi trong marble rack để kích hoạt đường ném.',
+    'Giữ và kéo thả vào ô cùng màu.',
     interactingWithMarble
       ? ''
       : ((G.mode==='special'&&G.specialLocked)
-          ? 'Cháº¿ Ä‘á»™ Special: mÃ u sáº½ táº¯t sau '+revealLeft+'s.'
+          ? 'Chế độ Special: màu sẽ tắt sau '+revealLeft+'s.'
           : ((G.mode==='special'&&G.specialHidden)
-              ? 'Cháº¿ Ä‘á»™ Special: mÃ u Ä‘ang bá»‹ áº©n, hÃ£y Ä‘áº·t theo trÃ­ nhá»›.'
-              : 'Má»¥c tiÃªu:chá»n má»™t viÃªn bi Ä‘á»ƒ báº¯t Ä‘áº§u.'))
+              ? 'Chế độ Special: màu đang bị ẩn, hãy đặt theo trí nhớ.'
+              : 'Mục tiêu: chọn một viên bi để bắt đầu.'))
   ];
 }
 
@@ -252,7 +252,7 @@ function drawXRCurvedHoloPanel(lv=LEVELS[G.lvIdx],guideLines=getHoloGuideLines(l
       ? 'rgba(255,218,132,.98)'
       : 'rgba(224,248,255,.94)';
     ctx.font='700 26px "Courier New",Consolas,monospace';
-    ctx.fillText('â€¢ '+modeGuide,124,modeGuideY);
+    ctx.fillText('- '+modeGuide,124,modeGuideY);
   }
 
   if(targetCd){
@@ -316,7 +316,7 @@ function ensureXRCurvedHoloPanel(){
 }
 
 function getXRHudTimeText(){
-  return G.mode==='hard' ? String(Math.max(0,G.timer)) : 'âˆž';
+  return G.mode==='hard' ? String(Math.max(0,G.timer)) : '∞';
 }
 
 function getXRWristHudText(){
@@ -443,6 +443,19 @@ function ensureXRWristHud(){
     new THREE.MeshBasicMaterial({map:xrWristHudTexture,transparent:true,opacity:.98,depthTest:false,depthWrite:false,side:THREE.DoubleSide})
   );
   xrWristHudPanelRig.add(xrWristHudPanel);
+
+  const menuTex=makeXRButtonTexture('MENU','#113241','#c9f4ff');
+  xrWristMenuButton=new THREE.Mesh(
+    new THREE.PlaneGeometry(.16,.06),
+    new THREE.MeshBasicMaterial({map:menuTex,transparent:true,opacity:.96,depthTest:false,depthWrite:false})
+  );
+  xrWristMenuButton.position.set(.2,-.018,.018);
+  xrWristMenuButton.userData.xrUiAction='ui-toggle';
+  xrWristMenuButton.userData.xrUiBaseOpacity=.96;
+  xrWristMenuButton.userData.xrUiBaseScale=1;
+  xrWristMenuButton.renderOrder=10002;
+  xrWristHudPanelRig.add(xrWristMenuButton);
+  xrInteractiveButtons.push(xrWristMenuButton);
 
   xrWristHud.renderOrder=9998;
   xrWristHud.visible=false;
@@ -587,7 +600,7 @@ function startSpecialReveal(){
     if(!G.active||G.mode!=='special'||!G.specialLocked){clearInterval(specialGuideInt);specialGuideInt=null;return;}
     syncHoloPanel(LEVELS[G.lvIdx],G.selectedMb?G.selectedMb.cd:null);
   },250);
-  toast('SPECIAL: Ghi nhá»› vá»‹ trÃ­ mÃ u trong 5 giÃ¢y!', 'inf', 2200);
+  toast('SPECIAL: Ghi nhớ vị trí màu trong 5 giây!', 'inf', 2200);
   clearTimeout(specialHideTmr);
   specialHideTmr=setTimeout(()=>{
     specialHideTmr=null;
@@ -597,12 +610,33 @@ function startSpecialReveal(){
     clearInterval(specialGuideInt);specialGuideInt=null;
     setSpecialSlotsHidden(true);
     syncHoloPanel(LEVELS[G.lvIdx]);
-    toast('MÃ u Ä‘Ã£ táº¯t. HÃ£y Ä‘áº·t bi theo trÃ­ nhá»›!', 'inf', 1800);
+    toast('Màu đã tắt. Hãy đặt bi theo trí nhớ!', 'inf', 1800);
   },5000);
 }
 
+function disposeMaterial(mat){
+  if(!mat) return;
+  if(Array.isArray(mat)){mat.forEach(disposeMaterial);return;}
+  if(typeof mat.dispose==='function') mat.dispose();
+}
+
+function disposeObject3D(obj){
+  if(!obj) return;
+  obj.traverse(child=>{
+    if(child.geometry&&typeof child.geometry.dispose==='function') child.geometry.dispose();
+    if(child.material) disposeMaterial(child.material);
+  });
+}
+
+function removeAndDispose(parent,obj){
+  if(!obj) return;
+  if(parent) parent.remove(obj);
+  else if(obj.parent) obj.parent.remove(obj);
+  disposeObject3D(obj);
+}
+
 function clearColorBoard(){
-  BOARD.children.filter(c=>c.userData.dynamicBoardPart).forEach(c=>BOARD.remove(c));
+  BOARD.children.filter(c=>c.userData.dynamicBoardPart).forEach(c=>removeAndDispose(BOARD,c));
   G.boardItems=[];
   G.boardFx={rings:[],starMat:null};
 }
@@ -849,7 +883,7 @@ function buildColorBoard(lv){
   BOARD.add(orb2);
 
   const starGeo=new THREE.BufferGeometry();
-  const starN=110;
+  const starN=60;
   const starPos=new Float32Array(starN*3);
   for(let i=0;i<starN;i++){
     const a=Math.random()*Math.PI*2;
@@ -899,16 +933,23 @@ function buildColorBoard(lv){
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function clearLevel(){
   clearArcheryLevel();
-  G.slots.forEach(s=>{WG.remove(s.mesh);WG.remove(s.rim);WG.remove(s.sprite);if(s.halo)WG.remove(s.halo);if(s.haloOuter)WG.remove(s.haloOuter);if(s.lightCol)WG.remove(s.lightCol);});
-  G.marbles.forEach(m=>scene.remove(m.grp));
-  MARBLE_RACK.children.filter(c=>c.userData.dynamicRackPart).forEach(c=>MARBLE_RACK.remove(c));
-  WG.children.filter(c=>c.userData.spoke).forEach(c=>WG.remove(c));
+  G.slots.forEach(s=>{
+    removeAndDispose(WG,s.mesh);
+    removeAndDispose(WG,s.rim);
+    removeAndDispose(WG,s.sprite);
+    if(s.halo) removeAndDispose(WG,s.halo);
+    if(s.haloOuter) removeAndDispose(WG,s.haloOuter);
+    if(s.lightCol) removeAndDispose(WG,s.lightCol);
+  });
+  G.marbles.forEach(m=>removeAndDispose(scene,m.grp));
+  MARBLE_RACK.children.filter(c=>c.userData.dynamicRackPart).forEach(c=>removeAndDispose(MARBLE_RACK,c));
+  WG.children.filter(c=>c.userData.spoke).forEach(c=>removeAndDispose(WG,c));
   // Hard cleanup: remove any dynamic slot/marble objects that may remain from async transitions
-  WG.children.filter(c=>c.userData.dynamicLevelPart).forEach(c=>WG.remove(c));
-  scene.children.filter(c=>c.userData.dynamicMarble).forEach(c=>scene.remove(c));
-  inFlight.forEach(f=>scene.remove(f.mesh));
+  WG.children.filter(c=>c.userData.dynamicLevelPart).forEach(c=>removeAndDispose(WG,c));
+  scene.children.filter(c=>c.userData.dynamicMarble).forEach(c=>removeAndDispose(scene,c));
+  inFlight.forEach(f=>removeAndDispose(scene,f.mesh));
   inFlight.length=0;
-  burstParticles.forEach(p=>scene.remove(p.mesh));
+  burstParticles.forEach(p=>removeAndDispose(scene,p.mesh));
   burstParticles.length=0;
   clearColorBoard();
   G.slots=[];G.marbles=[];G.placed={};
@@ -1082,7 +1123,7 @@ function buildLevel(){
   }
   G.startTime=Date.now();
   updateProg();
-  toast('LEVEL '+lv.id+' â€” KÃ©o tháº£ bi vÃ o Ã´ cÃ¹ng mÃ u!','inf',2200);
+  toast('LEVEL '+lv.id+' - Kéo thả bi vào ô cùng màu!','inf',2200);
   if(G.mode==='special') startSpecialReveal();
 }
 
@@ -1091,12 +1132,12 @@ function updateProg(){
     const tot=Math.max(1,xrArchery.hitGoal||1);
     const done=Math.min(tot,xrArchery.correctHits||0);
     document.getElementById('prog-fill').style.width=(done/tot*100)+'%';
-    document.getElementById('prog-txt').textContent=done+' / '+tot+' hit Ä‘Ãºng mÃ u';
+    document.getElementById('prog-txt').textContent=done+' / '+tot+' hit đúng màu';
     return;
   }
   const lv=LEVELS[G.lvIdx],tot=lv.colors.length,done=Object.keys(G.placed).length;
   document.getElementById('prog-fill').style.width=(done/tot*100)+'%';
-  document.getElementById('prog-txt').textContent=done+' / '+tot+' bi Ä‘áº·t Ä‘Ãºng';
+  document.getElementById('prog-txt').textContent=done+' / '+tot+' bi đặt đúng';
 }
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -1281,7 +1322,7 @@ function resolveThrow(f){
     document.getElementById('hv-sc').textContent=G.score;
     document.getElementById('hv-co').textContent=Object.keys(G.placed).length;
     document.getElementById('hv-cb').textContent='x'+G.combo;
-    toast('âœ“ '+mb.cd.name+(G.combo>1?' Â· COMBO x'+G.combo:'')+(pts>10?' +'+pts:''),'ok',1300);
+    toast('✓ '+mb.cd.name+(G.combo>1?' · COMBO x'+G.combo:'')+(pts>10?' +'+pts:''),'ok',1300);
     pulseM(mb.grp.userData.mm);
     spawnParticles(mb.grp.position.clone(),mb.cd.hex,true);
     updateProg();
@@ -1294,7 +1335,7 @@ function resolveThrow(f){
     document.getElementById('hv-cb').textContent='x1';
     if(G.mode==='hard'){G.score=Math.max(0,G.score-5);document.getElementById('hv-sc').textContent=G.score;}
     sfx.bad();
-    toast('âœ— '+mb.cd.name+' â€” Sai Ã´!','err',1700);
+    toast('✕ '+mb.cd.name+' - Sai ô!','err',1700);
     spawnParticles(f.endPos.clone(),mb.cd.hex,false);
     setTimeout(()=>{
       mb.grp.visible=true;mb.grp.userData.inFlight=false;
@@ -1335,7 +1376,7 @@ function placeOrRejectMarble(mb, slot){
     document.getElementById('hv-sc').textContent=G.score;
     document.getElementById('hv-co').textContent=Object.keys(G.placed).length;
     document.getElementById('hv-cb').textContent='x'+G.combo;
-    toast('âœ“ '+mb.cd.name+(G.combo>1?' Â· COMBO x'+G.combo:'')+(pts>10?' +'+pts:''),'ok',1300);
+    toast('✓ '+mb.cd.name+(G.combo>1?' · COMBO x'+G.combo:'')+(pts>10?' +'+pts:''),'ok',1300);
     pulseM(mb.grp.userData.mm);
     spawnParticles(mb.grp.position.clone(),mb.cd.hex,true);
     updateProg();
@@ -1348,11 +1389,11 @@ function placeOrRejectMarble(mb, slot){
     document.getElementById('hv-cb').textContent='x1';
     if(G.mode==='hard'){G.score=Math.max(0,G.score-5);document.getElementById('hv-sc').textContent=G.score;}
     sfx.bad();
-    toast('âœ— '+mb.cd.name+' â€” Sai Ã´!','err',1700);
+    toast('✕ '+mb.cd.name+' - Sai ô!','err',1700);
     spawnParticles(mb.grp.position.clone(),mb.cd.hex,false);
     animReturn(mb);
     if(G.mode==='special'){
-      toast('Sai rá»“i! Reset level Ä‘áº·c biá»‡t...', 'err', 1400);
+      toast('Sai rồi! Reset level đặc biệt...', 'err', 1400);
       setTimeout(()=>{
         if(!G.active||G.mode!=='special') return;
         buildLevel();

@@ -66,14 +66,14 @@ function createNativeVRButton(){
 
   if(!isSecureContext){
     setDisabled('HTTPS REQUIRED');
-    setXRStatus('VR cáº§n HTTPS hoáº·c localhost');
+    setXRStatus('VR cần HTTPS hoặc localhost');
     document.body.appendChild(btn);
     return btn;
   }
 
   if(!navigator.xr||!navigator.xr.isSessionSupported){
     setDisabled('VR NOT SUPPORTED');
-    setXRStatus('KhÃ´ng cÃ³ navigator.xr (dÃ¹ng Quest Browser/Chrome há»— trá»£ WebXR)');
+    setXRStatus('Không có navigator.xr (dùng Quest Browser/Chrome hỗ trợ WebXR)');
     document.body.appendChild(btn);
     return btn;
   }
@@ -81,7 +81,7 @@ function createNativeVRButton(){
   navigator.xr.isSessionSupported('immersive-vr').then(supported=>{
     if(!supported){
       setDisabled('VR NOT SUPPORTED');
-      setXRStatus('Thiáº¿t bá»‹/trÃ¬nh duyá»‡t chÆ°a há»— trá»£ immersive-vr');
+      setXRStatus('Thiết bị/trình duyệt chưa hỗ trợ immersive-vr');
     }else{
       btn.disabled=false;
       btn.style.opacity='1';
@@ -91,7 +91,7 @@ function createNativeVRButton(){
     }
   }).catch(()=>{
     setDisabled('VR CHECK ERROR');
-    setXRStatus('KhÃ´ng kiá»ƒm tra Ä‘Æ°á»£c tráº¡ng thÃ¡i VR');
+    setXRStatus('Không kiểm tra được trạng thái VR');
   });
 
   btn.addEventListener('click',async()=>{
@@ -106,21 +106,21 @@ function createNativeVRButton(){
       });
       await renderer.xr.setSession(session);
     }catch(err){
-      const msg=(err&&err.message)?err.message:'Lá»—i khÃ´ng xÃ¡c Ä‘á»‹nh';
-      setXRStatus('KhÃ´ng vÃ o VR Ä‘Æ°á»£c: '+msg);
+      const msg=(err&&err.message)?err.message:'Lỗi không xác định';
+      setXRStatus('Không vào VR được: '+msg);
     }
   });
 
   renderer.xr.addEventListener('sessionstart',()=>{
     btn.textContent='EXIT VR';
     btn.style.opacity='1';
-    setXRStatus('ÄÃ£ vÃ o VR', 'ok');
+    setXRStatus('Đã vào VR', 'ok');
     alignVRToDesktopView();
     refreshPresentationMode();
   });
   renderer.xr.addEventListener('sessionend',()=>{
     btn.textContent='ENTER VR';
-    setXRStatus('ÄÃ£ thoÃ¡t VR');
+    setXRStatus('Đã thoát VR');
   });
 
   document.body.appendChild(btn);
@@ -139,24 +139,24 @@ if(THREE.VRButton&&THREE.VRButton.createButton){
   vrBtn.style.opacity='1';
   document.body.appendChild(vrBtn);
 
-  renderer.xr.addEventListener('sessionstart',()=>{setXRStatus('ÄÃ£ vÃ o VR', 'ok');alignVRToDesktopView();});
-  renderer.xr.addEventListener('sessionend',()=>setXRStatus('ÄÃ£ thoÃ¡t VR'));
+  renderer.xr.addEventListener('sessionstart',()=>{setXRStatus('Đã vào VR', 'ok');alignVRToDesktopView();});
+  renderer.xr.addEventListener('sessionend',()=>setXRStatus('Đã thoát VR'));
 
   if(!isSecureContext){
-    setXRStatus('VR cáº§n HTTPS hoáº·c localhost');
+    setXRStatus('VR cần HTTPS hoặc localhost');
   }else if(!('xr' in navigator)){
-    setXRStatus('KhÃ´ng cÃ³ navigator.xr (hÃ£y má»Ÿ báº±ng trÃ¬nh duyá»‡t há»— trá»£ WebXR)');
+    setXRStatus('Không có navigator.xr (hãy mở bằng trình duyệt hỗ trợ WebXR)');
     vrBtn.style.opacity='.7';
   }else if(navigator.xr&&navigator.xr.isSessionSupported){
     navigator.xr.isSessionSupported('immersive-vr').then(supported=>{
       if(!supported){
-        setXRStatus('Thiáº¿t bá»‹/trÃ¬nh duyá»‡t chÆ°a há»— trá»£ immersive-vr');
+        setXRStatus('Thiết bị/trình duyệt chưa hỗ trợ immersive-vr');
         vrBtn.style.opacity='.7';
       }else{
         setXRStatus('VR READY', 'ok');
         vrBtn.style.opacity='1';
       }
-    }).catch(()=>setXRStatus('KhÃ´ng kiá»ƒm tra Ä‘Æ°á»£c tráº¡ng thÃ¡i VR'));
+    }).catch(()=>setXRStatus('Không kiểm tra được trạng thái VR'));
   }
 }else{
   createNativeVRButton();
@@ -257,7 +257,7 @@ const back=new THREE.PointLight(0xff2d78,1.5,20);back.position.set(0,-2,-8);scen
 
 // Stars
 const sGeo=new THREE.BufferGeometry();
-const sN=4000,sP=new Float32Array(sN*3),sSz=new Float32Array(sN);
+const sN=1800,sP=new Float32Array(sN*3),sSz=new Float32Array(sN);
 for(let i=0;i<sN;i++){sP[i*3]=(Math.random()-.5)*280;sP[i*3+1]=(Math.random()-.5)*280;sP[i*3+2]=(Math.random()-.5)*280;sSz[i]=Math.random()*1.8+.2;}
 sGeo.setAttribute('position',new THREE.BufferAttribute(sP,3));
 sGeo.setAttribute('size',new THREE.BufferAttribute(sSz,1));
@@ -274,7 +274,7 @@ const galaxy=new THREE.Mesh(new THREE.TorusGeometry(50,10,4,100),galMat);galaxy.
 
 // Asteroids
 const astGroup=new THREE.Group();
-for(let i=0;i<100;i++){const a=(i/100)*Math.PI*2,r=18+Math.random()*6;const m=new THREE.Mesh(new THREE.DodecahedronGeometry(Math.random()*.12+.04,0),new THREE.MeshStandardMaterial({color:0x223355,roughness:.9,metalness:.2}));m.position.set(Math.cos(a)*r,(Math.random()-.5)*3,Math.sin(a)*r-25);m.rotation.set(Math.random()*6,Math.random()*6,0);astGroup.add(m);}
+for(let i=0;i<56;i++){const a=(i/56)*Math.PI*2,r=18+Math.random()*6;const m=new THREE.Mesh(new THREE.DodecahedronGeometry(Math.random()*.12+.04,0),new THREE.MeshStandardMaterial({color:0x223355,roughness:.9,metalness:.2}));m.position.set(Math.cos(a)*r,(Math.random()-.5)*3,Math.sin(a)*r-25);m.rotation.set(Math.random()*6,Math.random()*6,0);astGroup.add(m);}
 scene.add(astGroup);
 
 // Floor
@@ -305,7 +305,7 @@ scene.add(floorFade);
 
 // Floating particles
 const pGeo=new THREE.BufferGeometry();
-const pN=280,pP=new Float32Array(pN*3),pV=[];
+const pN=140,pP=new Float32Array(pN*3),pV=[];
 for(let i=0;i<pN;i++){pP[i*3]=(Math.random()-.5)*24;pP[i*3+1]=(Math.random()-.5)*12;pP[i*3+2]=(Math.random()-.5)*16;pV.push({x:(Math.random()-.5)*.004,y:Math.random()*.004+.001});}
 pGeo.setAttribute('position',new THREE.BufferAttribute(pP,3));
 scene.add(new THREE.Points(pGeo,new THREE.PointsMaterial({color:0x00f5ff,size:.055,transparent:true,opacity:.35,blending:THREE.AdditiveBlending,depthWrite:false})));

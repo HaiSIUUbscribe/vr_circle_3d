@@ -63,6 +63,7 @@ let xrWristHudTexture = null;
 let xrWristHudPanel = null;
 let xrWristHudGlow = null;
 let xrWristHudPanelRig = null;
+let xrWristMenuButton = null;
 let xrWristHudLastText = '';
 const xrWristHudAnchorPos = new THREE.Vector3();
 const xrWristHudAnchorQuat = new THREE.Quaternion();
@@ -337,7 +338,7 @@ function makeXRMenuPanelTexture(){
   return tex;
 }
 
-function makeXRMenuTitleTexture(title='COLOR CIRCLE Â· VR'){
+function makeXRMenuTitleTexture(title='COLOR CIRCLE · VR'){
   const cnv=document.createElement('canvas');
   cnv.width=1200;cnv.height=260;
   const ctx=cnv.getContext('2d');
@@ -554,11 +555,11 @@ function setupXRUI(){
   xrUiPanel.add(title);
   xrUiMainNodes.push(title);
 
-  const bNew=createXRUIButton('â–¶ NEW GAME',0,.16,'ui-new-game','#18314c');
-  const bLevel=createXRUIButton('â—† LEVEL',0,.055,'ui-open-level','#2b2547');
-  const bSetting=createXRUIButton('âš™ SETTINGS',0,-.05,'ui-open-setting','#12384a');
-  const bQuit=createXRUIButton('âœ• QUIT',0,-.155,'ui-quit-game','#3b1020');
-  const bClose=createXRUIButton('â— CLOSE',0,-.26,'ui-close','#13352a');
+  const bNew=createXRUIButton('NEW GAME',0,.16,'ui-new-game','#18314c');
+  const bLevel=createXRUIButton('LEVEL',0,.055,'ui-open-level','#2b2547');
+  const bSetting=createXRUIButton('SETTINGS',0,-.05,'ui-open-setting','#12384a');
+  const bQuit=createXRUIButton('QUIT',0,-.155,'ui-quit-game','#3b1020');
+  const bClose=createXRUIButton('CLOSE',0,-.26,'ui-close','#13352a');
   xrUiMainNodes.push(bNew,bLevel,bSetting,bQuit,bClose);
 
   const lvTitleTex=makeXRButtonTexture('LEVEL','#1a1f4a','#cfd4ff');
@@ -852,7 +853,7 @@ function setupXRMenuUI(){
   panelGlow.position.set(0,-.01,-.008);
   xrMenuPanel.add(panelGlow);
 
-  const titleTex=makeXRMenuTitleTexture('COLOR CIRCLE Â· VR');
+  const titleTex=makeXRMenuTitleTexture('COLOR CIRCLE · VR');
   const title=new THREE.Mesh(
     new THREE.PlaneGeometry(1.24,.24),
     new THREE.MeshBasicMaterial({map:titleTex,transparent:true,opacity:.95,depthTest:false,depthWrite:false})
@@ -1669,29 +1670,29 @@ function applyXRUIAction(action){
   if(action==='ui-open-level'){xrUiView='level';updateXRUIViews();return;}
   if(action==='ui-open-setting'){xrUiView='setting';updateXRUIViews();return;}
   if(action==='ui-back-main'){xrUiView='main';updateXRUIViews();return;}
-  if(action==='ui-quit-game'){exitToMenu();toast('ÄÃ£ thoÃ¡t vá» menu', 'inf', 900);return;}
+  if(action==='ui-quit-game'){exitToMenu();toast('Đã thoát về menu', 'inf', 900);return;}
   if(action==='vol-slider') return;
   if(action==='mode-easy'){
     selMode('easy');
-    toast('ÄÃ£ chá»n EASY', 'inf', 700);
+    toast('Đã chọn EASY', 'inf', 700);
     if(!G.active) startGame();
     return;
   }
   if(action==='mode-hard'){
     selMode('hard');
-    toast('ÄÃ£ chá»n HARD', 'inf', 700);
+    toast('Đã chọn HARD', 'inf', 700);
     if(!G.active) startGame();
     return;
   }
   if(action==='mode-special'){
     selMode('special');
-    toast('ÄÃ£ chá»n SPECIAL', 'inf', 700);
+    toast('Đã chọn SPECIAL', 'inf', 700);
     if(!G.active) startGame();
     return;
   }
   if(action==='mode-archery'){
     selMode('archery');
-    toast('ÄÃ£ chá»n ARCHERY', 'inf', 700);
+    toast('Đã chọn ARCHERY', 'inf', 700);
     if(!G.active) startGame();
     return;
   }
@@ -1706,7 +1707,7 @@ function applyXRUIAction(action){
   if(action==='start-game'){startGame();return;}
   if(action==='exit'){
     exitToMenu();
-    toast('ÄÃ£ thoÃ¡t vá» menu', 'inf', 900);
+    toast('Đã thoát về menu', 'inf', 900);
   }
 }
 

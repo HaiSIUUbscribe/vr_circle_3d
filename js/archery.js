@@ -1,6 +1,6 @@
 ﻿function clearArcheryLevel(){
   xrArchery.active=false;
-  xrArchery.projectiles.forEach(p=>scene.remove(p.mesh));
+  xrArchery.projectiles.forEach(p=>removeAndDispose(scene,p.mesh));
   xrArchery.projectiles.length=0;
   xrArchery.rings.length=0;
   xrArchery.colorNodes.forEach(n=>{
@@ -9,10 +9,8 @@
   });
   xrArchery.colorNodes.length=0;
   xrArchery.arrowStands.length=0;
-  if(xrArchery.heldArrow&&xrArchery.heldArrow.parent) xrArchery.heldArrow.parent.remove(xrArchery.heldArrow);
-  if(xrArchery.heldArrow) scene.remove(xrArchery.heldArrow);
-  if(xrArchery.bowMesh&&xrArchery.bowMesh.parent) xrArchery.bowMesh.parent.remove(xrArchery.bowMesh);
-  if(xrArchery.bowMesh) scene.remove(xrArchery.bowMesh);
+  if(xrArchery.heldArrow) removeAndDispose(null,xrArchery.heldArrow);
+  if(xrArchery.bowMesh) removeAndDispose(null,xrArchery.bowMesh);
   xrArchery.selectedCd=null;
   xrArchery.selectedNode=null;
   xrArchery.bowMesh=null;
@@ -24,7 +22,7 @@
   xrArchery.correctHits=0;
   xrArchery.totalShots=0;
   xrArchery.hitGoal=0;
-  xrArchery.root.clear();
+  while(xrArchery.root.children.length) removeAndDispose(xrArchery.root,xrArchery.root.children[0]);
   if(xrArchery.root.parent) scene.remove(xrArchery.root);
 }
 
@@ -40,7 +38,7 @@ function setArcherySelectedColor(cd,node=null,quiet=false){
   });
   if(cd){
     syncHoloPanel(LEVELS[G.lvIdx],cd);
-    if(!quiet) toast('ÄÃ£ chá»n mÅ©i tÃªn '+cd.name.toUpperCase(), 'inf', 700);
+    if(!quiet) toast('Đã chọn mũi tên '+cd.name.toUpperCase(), 'inf', 700);
   }
 }
 
@@ -101,10 +99,10 @@ function attachArcheryBow(controller){
   if(!xrArchery.bowMesh||xrArchery.bowHoldController) return false;
   xrArchery.bowHoldController=controller;
   controller.attach(xrArchery.bowMesh);
-  xrArchery.bowMesh.position.set(-.02,-.03,-.26);
-  xrArchery.bowMesh.rotation.set(0,Math.PI*.5,.12);
+  xrArchery.bowMesh.position.set(-.02,-.03,-.24);
+  xrArchery.bowMesh.rotation.set(0,0,.12);
   xrArchery.bowMesh.scale.setScalar(1.02);
-  toast('ÄÃ£ cáº§m cung', 'inf', 650);
+  toast('Đã cầm cung', 'inf', 650);
   return true;
 }
 
@@ -139,14 +137,14 @@ function tryGrabArcheryArrow(controller){
   scene.add(held);
   controller.attach(held);
   held.position.set(0,-.02,-.16);
-  held.rotation.set(Math.PI*.5,0,0);
+  held.rotation.set(-Math.PI*.5,0,0);
 
   xrArchery.heldArrow=held;
   xrArchery.arrowHoldController=controller;
   xrArchery.pullStrength=.04;
   stand.visible=false;
   setArcherySelectedColor(stand.userData.archeryColor,stand,true);
-  toast('KÃ©o dÃ¢y vÃ  tháº£ trigger Ä‘á»ƒ báº¯n', 'inf', 800);
+  toast('Kéo dây và thả trigger để bắn', 'inf', 800);
   return true;
 }
 
@@ -160,15 +158,15 @@ function releaseArcheryHeldArrow(shoot=false){
 
   if(shoot&&ctrl&&xrArchery.bowHoldController){
     scene.attach(held);
-    const rightPos=new THREE.Vector3().setFromMatrixPosition(ctrl.matrixWorld);
-    const leftPos=new THREE.Vector3().setFromMatrixPosition(xrArchery.bowHoldController.matrixWorld);
+    const arrowPos=new THREE.Vector3().setFromMatrixPosition(ctrl.matrixWorld);
+    const bowPos=new THREE.Vector3().setFromMatrixPosition(xrArchery.bowHoldController.matrixWorld);
     tempMatrix.identity().extractRotation(ctrl.matrixWorld);
     const fwd=new THREE.Vector3(0,0,-1).applyMatrix4(tempMatrix).normalize();
-    const dir=new THREE.Vector3().subVectors(rightPos,leftPos).normalize().lerp(fwd,.42).normalize();
+    const dir=new THREE.Vector3().subVectors(bowPos,arrowPos).normalize().lerp(fwd,.42).normalize();
     const strength=Math.max(.06,Math.min(1,xrArchery.pullStrength));
     const mass=.9+Math.random()*.45;
     const speed=8.2+strength*13.8;
-    held.position.copy(rightPos).addScaledVector(dir,.1);
+    held.position.copy(arrowPos).addScaledVector(dir,.1);
     held.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.clone().normalize());
     xrArchery.projectiles.push({
       mesh:held,
@@ -337,7 +335,7 @@ function buildArcheryLevel(){
   });
 
   const badge=document.getElementById('badge');
-  badge.textContent=lv.badge+' Â· ARCHERY';
+  badge.textContent=lv.badge+' · ARCHERY';
   badge.style.borderColor=lv.bc+'55';
   badge.style.color=lv.bc;
   document.getElementById('hv-lv').textContent=lv.id+'/3';
@@ -369,7 +367,7 @@ function buildArcheryLevel(){
   G.startTime=Date.now();
   updateProg();
   setArcherySelectedColor(cols[0],null,true);
-  toast('ARCHERY VR: láº¥y cung + mÅ©i tÃªn trÃªn bÃ n rá»“i kÃ©o-tháº£ Ä‘á»ƒ báº¯n!', 'inf', 2300);
+  toast('ARCHERY VR: lấy cung + mũi tên trên bàn rồi kéo-thả để bắn!', 'inf', 2300);
   syncHoloPanel(lv,cols[0]);
 }
 
@@ -389,13 +387,13 @@ function resolveArcheryHit(projectile,ring,hitPoint){
     sfx.ok();
     showCombo(G.combo,pts);
     spawnParticles(hitPoint.clone(),isCenter?'#ffd579':shotCd.hex,true);
-    toast(isCenter?('â—Ž BULLSEYE +'+pts):('âœ“ '+shotCd.name+' chÃ­nh xÃ¡c!'), 'ok', isCenter?1100:900);
+    toast(isCenter?('BULLSEYE +'+pts):('✓ '+shotCd.name+' chính xác!'), 'ok', isCenter?1100:900);
   }else{
     G.combo=1;
     if(G.mode==='hard') G.score=Math.max(0,G.score-6);
     sfx.bad();
     spawnParticles(hitPoint.clone(),shotCd?shotCd.hex:'#66d7ff',false);
-    toast('âœ— Sai mÃ u! TrÃºng '+(hitCd?hitCd.name.toUpperCase():'má»¥c tiÃªu'), 'err', 1000);
+    toast('✕ Sai màu! Trúng '+(hitCd?hitCd.name.toUpperCase():'mục tiêu'), 'err', 1000);
   }
 
   ring.scale.setScalar(1.08);
