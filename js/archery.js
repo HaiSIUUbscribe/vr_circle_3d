@@ -95,6 +95,16 @@ function buildArcheryBow(){
   return bow;
 }
 
+const ARCHERY_BOW_REST_POS=new THREE.Vector3(-.18,.084,.02);
+const ARCHERY_BOW_REST_ROT=new THREE.Euler(-Math.PI*.5,0,-.08);
+
+function setArcheryBowRestTransform(){
+  if(!xrArchery.bowMesh) return;
+  xrArchery.bowMesh.position.copy(ARCHERY_BOW_REST_POS);
+  xrArchery.bowMesh.rotation.copy(ARCHERY_BOW_REST_ROT);
+  xrArchery.bowMesh.scale.setScalar(1);
+}
+
 function attachArcheryBow(controller){
   if(!xrArchery.bowMesh||xrArchery.bowHoldController) return false;
   xrArchery.bowHoldController=controller;
@@ -109,9 +119,7 @@ function attachArcheryBow(controller){
 function releaseArcheryBow(){
   if(!xrArchery.bowMesh) return;
   xrArchery.tableRig.attach(xrArchery.bowMesh);
-  xrArchery.bowMesh.position.set(-.32,.16,0);
-  xrArchery.bowMesh.rotation.set(0,Math.PI*.25,.2);
-  xrArchery.bowMesh.scale.setScalar(1);
+  setArcheryBowRestTransform();
   xrArchery.bowHoldController=null;
 }
 
@@ -239,7 +247,7 @@ function buildArcheryLevel(){
   xrArchery.tableRig.clear();
   xrArchery.arrowStands.length=0;
 
-  const targetPos=new THREE.Vector3(0,1.58,-2.55);
+  const targetPos=new THREE.Vector3(0,1.58,-4.5);
   xrArchery.targetRig.position.copy(targetPos);
 
   const targetBack=new THREE.Mesh(
@@ -319,16 +327,32 @@ function buildArcheryLevel(){
   tableLeg.position.y=-.35;
   xrArchery.tableRig.add(tableLeg);
 
+  const bowCradleMat=new THREE.MeshStandardMaterial({
+    color:0x162a3d,
+    roughness:.42,
+    metalness:.72,
+    emissive:0x0b4056,
+    emissiveIntensity:.48
+  });
+  [-.24,.24].forEach(z=>{
+    const cradle=new THREE.Mesh(new THREE.CylinderGeometry(.038,.046,.03,16),bowCradleMat);
+    cradle.position.set(ARCHERY_BOW_REST_POS.x-.295,.055,ARCHERY_BOW_REST_POS.z+z);
+    xrArchery.tableRig.add(cradle);
+  });
+
   xrArchery.bowMesh=buildArcheryBow();
-  xrArchery.bowMesh.position.set(-.32,.16,0);
-  xrArchery.bowMesh.rotation.set(0,Math.PI*.25,.2);
   xrArchery.tableRig.add(xrArchery.bowMesh);
+  setArcheryBowRestTransform();
 
   xrArchery.bowPickup=new THREE.Mesh(
-    new THREE.SphereGeometry(.22,12,12),
+    new THREE.BoxGeometry(.5,.14,.82),
     new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.001,depthWrite:false})
   );
-  xrArchery.bowPickup.position.copy(xrArchery.bowMesh.position);
+  xrArchery.bowPickup.position.set(
+    ARCHERY_BOW_REST_POS.x-.19,
+    ARCHERY_BOW_REST_POS.y+.025,
+    ARCHERY_BOW_REST_POS.z
+  );
   xrArchery.tableRig.add(xrArchery.bowPickup);
 
   cols.forEach((cd,i)=>{

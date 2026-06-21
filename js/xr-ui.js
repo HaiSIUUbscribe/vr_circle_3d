@@ -4,13 +4,11 @@ const xrUiToggleGroup = new THREE.Group();
 const xrMenuPanel = new THREE.Group();
 const xrVictoryArena = new THREE.Group();
 const xrDefeatArena = new THREE.Group();
-const xrMenuButtons = [];
 const xrVictoryButtons = [];
 const xrDefeatButtons = [];
 const xrInteractiveButtons = [];
 const xrMenuModeButtons = {};
-const xrMenuEnergyNodes = [];
-const xrMenuEnergyLines = [];
+const xrMenuAmbientNodes = [];
 const xrUiWorldForward = new THREE.Vector3();
 const xrUiWorldRight = new THREE.Vector3();
 const xrUiTargetPos = new THREE.Vector3();
@@ -107,10 +105,11 @@ let xrDefeatPulse = 0;
 const xrDefeatData = { level:'1/3', score:'0', time:'0:00', maxCombo:'x1' };
 const xrDefeatLookTarget = new THREE.Vector3();
 const xrDefeatAnimatedNodes = [];
-let xrMenuStartButton = null;
-let xrMenuEnergyLightCyan = null;
-let xrMenuEnergyLightMagenta = null;
-let xrMenuEnergyLightGold = null;
+let xrMenuTitleRig = null;
+let xrMenuFocusCore = null;
+let xrMenuAnchorReady = false;
+let xrMenuReveal = 0;
+const xrMenuAnchorPos = new THREE.Vector3();
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //  HOVER (idle & selected phases)
@@ -259,213 +258,6 @@ function makeXRButtonTexture(label,bg='#11263a',fg='#e9fbff'){
   return tex;
 }
 
-function pathXRChamferRect(ctx,x,y,w,h,cut=18){
-  const c=Math.min(cut,Math.min(w,h)*.35);
-  ctx.beginPath();
-  ctx.moveTo(x+c,y);
-  ctx.lineTo(x+w-c,y);
-  ctx.lineTo(x+w,y+c);
-  ctx.lineTo(x+w,y+h-c);
-  ctx.lineTo(x+w-c,y+h);
-  ctx.lineTo(x+c,y+h);
-  ctx.lineTo(x,y+h-c);
-  ctx.lineTo(x,y+c);
-  ctx.closePath();
-}
-
-function makeXRMenuPanelTexture(){
-  const cnv=document.createElement('canvas');
-  cnv.width=1280;cnv.height=760;
-  const ctx=cnv.getContext('2d');
-  const w=cnv.width,h=cnv.height;
-
-  ctx.clearRect(0,0,w,h);
-
-  const bg=ctx.createLinearGradient(0,0,0,h);
-  bg.addColorStop(0,'rgba(152,209,255,.2)');
-  bg.addColorStop(.52,'rgba(24,39,70,.5)');
-  bg.addColorStop(1,'rgba(8,16,31,.74)');
-  pathRoundedRect(ctx,22,18,w-44,h-36,78);
-  ctx.fillStyle=bg;
-  ctx.fill();
-
-  const bloom1=ctx.createRadialGradient(w*.22,h*.14,18,w*.22,h*.14,280);
-  bloom1.addColorStop(0,'rgba(0,245,255,.34)');
-  bloom1.addColorStop(1,'rgba(0,245,255,0)');
-  ctx.fillStyle=bloom1;
-  ctx.fillRect(0,0,w,h);
-
-  const bloom2=ctx.createRadialGradient(w*.78,h*.18,18,w*.78,h*.18,260);
-  bloom2.addColorStop(0,'rgba(255,45,120,.3)');
-  bloom2.addColorStop(1,'rgba(255,45,120,0)');
-  ctx.fillStyle=bloom2;
-  ctx.fillRect(0,0,w,h);
-
-  const bloom3=ctx.createRadialGradient(w*.54,h*.82,20,w*.54,h*.82,300);
-  bloom3.addColorStop(0,'rgba(255,215,0,.22)');
-  bloom3.addColorStop(1,'rgba(255,215,0,0)');
-  ctx.fillStyle=bloom3;
-  ctx.fillRect(0,0,w,h);
-
-  pathRoundedRect(ctx,22,18,w-44,h-36,78);
-  const edge=ctx.createLinearGradient(0,0,w,h);
-  edge.addColorStop(0,'rgba(0,245,255,.95)');
-  edge.addColorStop(.32,'rgba(255,45,120,.88)');
-  edge.addColorStop(.68,'rgba(255,255,0,.85)');
-  edge.addColorStop(1,'rgba(255,215,0,.95)');
-  ctx.strokeStyle=edge;
-  ctx.lineWidth=8;
-  ctx.stroke();
-
-  pathRoundedRect(ctx,48,42,w-96,h-84,64);
-  ctx.strokeStyle='rgba(220,246,255,.24)';
-  ctx.lineWidth=2;
-  ctx.stroke();
-
-  for(let i=0;i<12;i++){
-    const y=96+i*46;
-    ctx.strokeStyle='rgba(160,220,255,.06)';
-    ctx.lineWidth=1;
-    ctx.beginPath();
-    ctx.moveTo(72,y);
-    ctx.lineTo(w-72,y);
-    ctx.stroke();
-  }
-
-  const tex=new THREE.CanvasTexture(cnv);
-  tex.anisotropy=renderer.capabilities.getMaxAnisotropy();
-  tex.needsUpdate=true;
-  return tex;
-}
-
-function makeXRMenuTitleTexture(title='COLOR CIRCLE · VR'){
-  const cnv=document.createElement('canvas');
-  cnv.width=1200;cnv.height=260;
-  const ctx=cnv.getContext('2d');
-  const w=cnv.width,h=cnv.height;
-
-  const tagBg=ctx.createLinearGradient(0,0,0,h);
-  tagBg.addColorStop(0,'rgba(33,46,74,.76)');
-  tagBg.addColorStop(1,'rgba(11,18,32,.85)');
-  pathXRChamferRect(ctx,24,16,w-48,h-32,42);
-  ctx.fillStyle=tagBg;
-  ctx.fill();
-
-  pathXRChamferRect(ctx,24,16,w-48,h-32,42);
-  const edge=ctx.createLinearGradient(0,0,w,0);
-  edge.addColorStop(0,'rgba(0,245,255,.96)');
-  edge.addColorStop(.5,'rgba(255,45,120,.9)');
-  edge.addColorStop(1,'rgba(255,215,0,.94)');
-  ctx.strokeStyle=edge;
-  ctx.lineWidth=8;
-  ctx.stroke();
-
-  ctx.textAlign='center';
-  ctx.textBaseline='middle';
-  const metal=ctx.createLinearGradient(0,54,0,168);
-  metal.addColorStop(0,'#f8feff');
-  metal.addColorStop(.35,'#a6d8ff');
-  metal.addColorStop(.55,'#ffffff');
-  metal.addColorStop(.78,'#ffe9b0');
-  metal.addColorStop(1,'#e8f8ff');
-  ctx.fillStyle=metal;
-  ctx.shadowColor='rgba(0,245,255,.42)';
-  ctx.shadowBlur=24;
-  ctx.font='900 86px Orbitron,Segoe UI,Arial,sans-serif';
-  ctx.fillText(title,w*.5,112);
-  ctx.shadowColor='rgba(255,45,120,.28)';
-  ctx.shadowBlur=20;
-  ctx.font='700 40px Orbitron,Segoe UI,Arial,sans-serif';
-  ctx.fillStyle='rgba(226,242,255,.9)';
-  ctx.fillText('SCI-FI GLASS PROTOCOL',w*.5,188);
-
-  const tex=new THREE.CanvasTexture(cnv);
-  tex.anisotropy=renderer.capabilities.getMaxAnisotropy();
-  tex.needsUpdate=true;
-  return tex;
-}
-
-function makeXRMenuModeTexture(title,desc,accent='#00f5ff'){
-  const cnv=document.createElement('canvas');
-  cnv.width=640;cnv.height=340;
-  const ctx=cnv.getContext('2d');
-  const w=cnv.width,h=cnv.height;
-  const ac=h2c(accent);
-  const acSoft=`rgba(${ac.r*255|0},${ac.g*255|0},${ac.b*255|0},.36)`;
-  const acStrong=`rgba(${ac.r*255|0},${ac.g*255|0},${ac.b*255|0},.95)`;
-
-  const g=ctx.createLinearGradient(0,0,0,h);
-  g.addColorStop(0,'rgba(26,42,70,.82)');
-  g.addColorStop(1,'rgba(8,16,30,.9)');
-  pathXRChamferRect(ctx,18,16,w-36,h-32,40);
-  ctx.fillStyle=g;
-  ctx.fill();
-
-  const hl=ctx.createLinearGradient(0,0,w,0);
-  hl.addColorStop(0,'rgba(255,255,255,.12)');
-  hl.addColorStop(.45,acSoft);
-  hl.addColorStop(1,'rgba(255,255,255,.07)');
-  pathXRChamferRect(ctx,18,16,w-36,h-32,40);
-  ctx.strokeStyle=hl;
-  ctx.lineWidth=8;
-  ctx.stroke();
-
-  ctx.textAlign='center';
-  ctx.textBaseline='middle';
-  ctx.fillStyle=acStrong;
-  ctx.shadowColor=acSoft;
-  ctx.shadowBlur=24;
-  ctx.font='900 80px Orbitron,Segoe UI,Arial,sans-serif';
-  ctx.fillText(title,w*.5,132);
-
-  ctx.shadowBlur=0;
-  ctx.fillStyle='rgba(224,242,255,.9)';
-  ctx.font='600 30px Rajdhani,Segoe UI,Arial,sans-serif';
-  ctx.fillText(desc,w*.5,234);
-
-  const tex=new THREE.CanvasTexture(cnv);
-  tex.anisotropy=renderer.capabilities.getMaxAnisotropy();
-  tex.needsUpdate=true;
-  return tex;
-}
-
-function makeXRMenuStartTexture(){
-  const cnv=document.createElement('canvas');
-  cnv.width=820;cnv.height=240;
-  const ctx=cnv.getContext('2d');
-  const w=cnv.width,h=cnv.height;
-
-  const g=ctx.createLinearGradient(0,0,w,h);
-  g.addColorStop(0,'rgba(255,215,0,.34)');
-  g.addColorStop(.52,'rgba(255,149,0,.2)');
-  g.addColorStop(1,'rgba(255,215,0,.28)');
-  pathXRChamferRect(ctx,16,14,w-32,h-28,36);
-  ctx.fillStyle=g;
-  ctx.fill();
-
-  pathXRChamferRect(ctx,16,14,w-32,h-28,36);
-  const edge=ctx.createLinearGradient(0,0,w,0);
-  edge.addColorStop(0,'rgba(255,255,180,.94)');
-  edge.addColorStop(.5,'rgba(255,215,0,.98)');
-  edge.addColorStop(1,'rgba(255,160,0,.94)');
-  ctx.strokeStyle=edge;
-  ctx.lineWidth=8;
-  ctx.stroke();
-
-  ctx.textAlign='center';
-  ctx.textBaseline='middle';
-  ctx.fillStyle='#fff9d3';
-  ctx.shadowColor='rgba(255,215,0,.52)';
-  ctx.shadowBlur=24;
-  ctx.font='900 84px Orbitron,Segoe UI,Arial,sans-serif';
-  ctx.fillText('BAT DAU',w*.5,h*.5+4);
-
-  const tex=new THREE.CanvasTexture(cnv);
-  tex.anisotropy=renderer.capabilities.getMaxAnisotropy();
-  tex.needsUpdate=true;
-  return tex;
-}
-
 function makeXRLabelTexture(label,fg='#d4ffd8'){
   const cnv=document.createElement('canvas');
   cnv.width=512;cnv.height=128;
@@ -502,21 +294,6 @@ function createXRUIButton(label,x,y,action,bg){
 
   xrUiPanel.add(mesh);
   xrUiButtons.push(mesh);
-  xrInteractiveButtons.push(mesh);
-  return mesh;
-}
-
-function createXRMenuButton(label,x,y,w,h,action,bg){
-  const tex=makeXRButtonTexture(label,bg||'#10263a');
-  const mat=new THREE.MeshBasicMaterial({map:tex,transparent:true,opacity:.9,depthTest:false,depthWrite:false});
-  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h),mat);
-  mesh.position.set(x,y,.02);
-  mesh.userData.xrUiAction=action;
-  mesh.userData.xrUiTex=tex;
-  mesh.userData.xrUiHover=false;
-  mesh.userData.xrUiBaseOpacity=.9;
-  xrMenuPanel.add(mesh);
-  xrMenuButtons.push(mesh);
   xrInteractiveButtons.push(mesh);
   return mesh;
 }
@@ -688,7 +465,14 @@ function makeXRSharpTextTexture(text,opt={}){
   ctx.textAlign='center';
   ctx.textBaseline='middle';
   ctx.font=opt.font||'900 88px Orbitron,Segoe UI,Arial,sans-serif';
-  ctx.fillStyle=opt.color||'#e8fbff';
+  if(opt.gradient&&opt.gradient.length){
+    const gradient=ctx.createLinearGradient(0,0,cnv.width,0);
+    const last=Math.max(1,opt.gradient.length-1);
+    opt.gradient.forEach((color,index)=>gradient.addColorStop(index/last,color));
+    ctx.fillStyle=gradient;
+  }else{
+    ctx.fillStyle=opt.color||'#e8fbff';
+  }
   ctx.shadowColor=opt.glow||'rgba(0,245,255,.4)';
   ctx.shadowBlur=18;
   ctx.fillText(text,cnv.width*.5,cnv.height*.52);
@@ -708,204 +492,365 @@ function createXRMenuTitleBlock(text,y,opt={}){
   const body=new THREE.Mesh(
     new THREE.BoxGeometry(w,h,d),
     new THREE.MeshPhysicalMaterial({
-      color:opt.body||0x9cc8e6,
-      metalness:.08,
-      roughness:.06,
-      transmission:.72,
+      color:opt.body||0x12212d,
+      metalness:.32,
+      roughness:.1,
+      transmission:.42,
       transparent:true,
       opacity:.9,
       clearcoat:1,
       clearcoatRoughness:.02,
       emissive:opt.emissive||0x1f4e74,
-      emissiveIntensity:.4
+      emissiveIntensity:.28
     })
   );
   g.add(body);
 
   const frame=new THREE.Mesh(
-    new THREE.BoxGeometry(w*1.02,h*1.06,d*.44),
-    new THREE.MeshStandardMaterial({color:0xa8c6de,metalness:.96,roughness:.18,emissive:opt.frameGlow||0x356f9c,emissiveIntensity:.36})
+    new THREE.BoxGeometry(w*1.035,h*1.18,d*.58),
+    new THREE.MeshStandardMaterial({color:0x60727d,metalness:.96,roughness:.16,emissive:opt.frameGlow||0x356f9c,emissiveIntensity:.54})
   );
   frame.position.z=-d*.3;
   g.add(frame);
 
-  const t=makeXRSharpTextTexture(text,{font:opt.font,color:opt.textColor,glow:opt.textGlow});
+  const glassGlow=new THREE.Mesh(
+    new THREE.PlaneGeometry(w*1.08,h*1.42),
+    new THREE.MeshBasicMaterial({color:opt.frameGlow||0x74e9ff,transparent:true,opacity:.12,blending:THREE.AdditiveBlending,depthWrite:false})
+  );
+  glassGlow.position.z=-d*.65;
+  g.add(glassGlow);
+
+  const bracketMat=new THREE.MeshStandardMaterial({
+    color:0xa5b3ba,metalness:1,roughness:.12,
+    emissive:opt.frameGlow||0x356f9c,emissiveIntensity:.7
+  });
+  [-1,1].forEach(side=>{
+    const bracket=new THREE.Mesh(new THREE.BoxGeometry(.035,h*1.32,d*1.1),bracketMat);
+    bracket.position.x=side*w*.515;
+    bracket.rotation.z=side*.1;
+    g.add(bracket);
+  });
+
+  const t=makeXRSharpTextTexture(text,{
+    font:opt.font,
+    color:opt.textColor,
+    gradient:opt.textGradient,
+    glow:opt.textGlow
+  });
   const label=new THREE.Mesh(
     new THREE.PlaneGeometry(w*.9,h*.6),
-    new THREE.MeshBasicMaterial({map:t,transparent:true,depthWrite:false})
+    new THREE.MeshBasicMaterial({map:t,transparent:true,depthWrite:false,toneMapped:false})
   );
   label.position.z=d*.52;
   g.add(label);
 
   g.position.set(0,y,.02);
   xrMenuPanel.add(g);
+  xrMenuTitleRig=g;
+  return g;
 }
 
-function createXRMenuEnergyBlock(mode,label,colorHex,x,desc){
-  const pos=new THREE.Vector3(x,.05,.03);
-  const block=new THREE.Mesh(
-    new THREE.BoxGeometry(.32,.21,.16),
-    new THREE.MeshPhysicalMaterial({
-      color:0xa8c7da,
-      metalness:.08,
-      roughness:.04,
-      transmission:.86,
-      transparent:true,
-      opacity:.92,
-      clearcoat:1,
-      clearcoatRoughness:.02,
-      emissive:colorHex,
-      emissiveIntensity:.22
+
+function makeXRHubPanelTexture(){
+  const cnv=document.createElement('canvas');
+  cnv.width=1400;cnv.height=820;
+  const ctx=cnv.getContext('2d');
+  const w=cnv.width,h=cnv.height;
+  ctx.clearRect(0,0,w,h);
+
+  const glass=ctx.createLinearGradient(0,0,0,h);
+  glass.addColorStop(0,'rgba(72,92,112,.7)');
+  glass.addColorStop(.45,'rgba(20,34,49,.78)');
+  glass.addColorStop(1,'rgba(9,18,29,.88)');
+  pathRoundedRect(ctx,18,16,w-36,h-32,32);
+  ctx.fillStyle=glass;
+  ctx.fill();
+
+  const topLight=ctx.createLinearGradient(0,0,w,0);
+  topLight.addColorStop(0,'rgba(95,230,255,.15)');
+  topLight.addColorStop(.45,'rgba(255,255,255,.32)');
+  topLight.addColorStop(1,'rgba(151,103,255,.16)');
+  pathRoundedRect(ctx,18,16,w-36,h-32,32);
+  ctx.strokeStyle=topLight;
+  ctx.lineWidth=5;
+  ctx.stroke();
+
+  pathRoundedRect(ctx,35,32,w-70,h-64,24);
+  ctx.strokeStyle='rgba(220,244,255,.13)';
+  ctx.lineWidth=2;
+  ctx.stroke();
+
+  for(let y=70;y<h-40;y+=44){
+    ctx.strokeStyle='rgba(145,205,235,.025)';
+    ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(42,y);ctx.lineTo(w-42,y);ctx.stroke();
+  }
+
+  const tex=new THREE.CanvasTexture(cnv);
+  tex.anisotropy=renderer.capabilities.getMaxAnisotropy();
+  tex.needsUpdate=true;
+  return tex;
+}
+
+function drawXRHubModeIcon(ctx,mode,cx,cy,size,accent){
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.strokeStyle=accent;
+  ctx.fillStyle=accent;
+  ctx.lineWidth=10;
+  ctx.shadowColor=accent;
+  ctx.shadowBlur=28;
+  if(mode==='easy'){
+    ctx.beginPath();ctx.arc(0,0,size*.68,0,Math.PI*2);ctx.stroke();
+    ctx.beginPath();
+    for(let i=0;i<6;i++){
+      const a=-Math.PI*.5+i*Math.PI/3;
+      const r=i%2?size*.48:size*.62;
+      const x=Math.cos(a)*r,y=Math.sin(a)*r;
+      if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    }
+    ctx.closePath();ctx.globalAlpha=.72;ctx.fill();
+  }else if(mode==='hard'){
+    ctx.rotate(Math.PI*.25);
+    ctx.strokeRect(-size*.46,-size*.46,size*.92,size*.92);
+    ctx.globalAlpha=.76;ctx.fillRect(-size*.3,-size*.3,size*.6,size*.6);
+    ctx.globalAlpha=1;
+    ctx.beginPath();ctx.moveTo(-size*.55,0);ctx.lineTo(size*.55,0);ctx.moveTo(0,-size*.55);ctx.lineTo(0,size*.55);ctx.stroke();
+  }else if(mode==='special'){
+    for(let i=0;i<4;i++){
+      ctx.beginPath();
+      ctx.arc(0,0,size*(.25+i*.12),i*.9,Math.PI*1.45+i*.9);
+      ctx.stroke();
+    }
+    ctx.beginPath();ctx.arc(0,0,size*.12,0,Math.PI*2);ctx.fill();
+  }else{
+    [1,.68,.35].forEach(r=>{ctx.beginPath();ctx.arc(0,0,size*.62*r,0,Math.PI*2);ctx.stroke();});
+    ctx.lineWidth=13;
+    ctx.beginPath();ctx.moveTo(-size*.1,size*.1);ctx.lineTo(size*.72,-size*.72);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(size*.72,-size*.72);ctx.lineTo(size*.42,-size*.66);ctx.lineTo(size*.66,-size*.42);ctx.closePath();ctx.fill();
+  }
+  ctx.restore();
+}
+
+function makeXRHubCardTexture(mode,title,descLines,accent){
+  const cnv=document.createElement('canvas');
+  cnv.width=560;cnv.height=980;
+  const ctx=cnv.getContext('2d');
+  const w=cnv.width,h=cnv.height;
+  const ac=h2c(accent);
+  const rgb=`${ac.r*255|0},${ac.g*255|0},${ac.b*255|0}`;
+
+  const bg=ctx.createLinearGradient(0,0,0,h);
+  bg.addColorStop(0,`rgba(${rgb},.2)`);
+  bg.addColorStop(.48,'rgba(12,23,35,.93)');
+  bg.addColorStop(1,`rgba(${rgb},.12)`);
+  pathRoundedRect(ctx,18,16,w-36,h-32,36);
+  ctx.fillStyle=bg;ctx.fill();
+
+  const edge=ctx.createLinearGradient(0,0,w,h);
+  edge.addColorStop(0,`rgba(${rgb},.98)`);
+  edge.addColorStop(.5,'rgba(235,250,255,.65)');
+  edge.addColorStop(1,`rgba(${rgb},.72)`);
+  pathRoundedRect(ctx,18,16,w-36,h-32,36);
+  ctx.strokeStyle=edge;ctx.lineWidth=9;ctx.stroke();
+  pathRoundedRect(ctx,36,34,w-72,h-68,25);
+  ctx.strokeStyle=`rgba(${rgb},.28)`;ctx.lineWidth=3;ctx.stroke();
+
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillStyle='#f5fbff';ctx.shadowColor=accent;ctx.shadowBlur=20;
+  ctx.font='900 64px Segoe UI,Arial,sans-serif';
+  ctx.fillText(title,w*.5,145);
+  drawXRHubModeIcon(ctx,mode,w*.5,450,125,accent);
+
+  ctx.shadowBlur=0;ctx.fillStyle='rgba(235,247,255,.9)';
+  ctx.font='700 39px Segoe UI,Arial,sans-serif';
+  descLines.forEach((line,index)=>ctx.fillText(line,w*.5,760+index*50));
+
+  const tex=new THREE.CanvasTexture(cnv);
+  tex.anisotropy=renderer.capabilities.getMaxAnisotropy();
+  tex.needsUpdate=true;
+  return tex;
+}
+
+const XR_HUB_WIDTH=2.55;
+const XR_HUB_HEIGHT=1.48;
+const XR_HUB_CURVE=.17;
+const XR_HUB_CENTER_Y=1.4;
+
+function getXRHubCurveZ(x){
+  const nx=x/(XR_HUB_WIDTH*.5);
+  return -.025+XR_HUB_CURVE*nx*nx*.92+.025;
+}
+
+function createXRMenuHubCard(mode,title,descLines,accent,x,index){
+  const texture=makeXRHubCardTexture(mode,title,descLines,accent);
+  const card=new THREE.Mesh(
+    createCurvedPanelGeometry(.55,1.08,.024,18),
+    new THREE.MeshBasicMaterial({map:texture,transparent:true,opacity:.94,depthWrite:false,toneMapped:false})
+  );
+  card.position.set(x,1.45,getXRHubCurveZ(x)+.038);
+  card.rotation.y=-x*.19;
+
+  const glow=new THREE.Mesh(
+    createCurvedPanelGeometry(.61,1.15,.028,18),
+    new THREE.MeshBasicMaterial({
+      color:new THREE.Color(accent),transparent:true,opacity:.08,
+      blending:THREE.AdditiveBlending,depthWrite:false
     })
   );
-  block.position.copy(pos);
+  glow.position.z=-.018;
+  card.add(glow);
 
-  const shell=new THREE.Mesh(
-    new THREE.BoxGeometry(.35,.24,.18),
-    new THREE.MeshStandardMaterial({color:0x25374c,metalness:.94,roughness:.2,emissive:colorHex,emissiveIntensity:.22})
+  const selectedBar=new THREE.Mesh(
+    new THREE.PlaneGeometry(.34,.018),
+    new THREE.MeshBasicMaterial({color:new THREE.Color(accent),transparent:true,opacity:.76,depthWrite:false})
   );
-  block.add(shell);
+  selectedBar.position.set(0,-.54,.018);
+  card.add(selectedBar);
 
-  const core=new THREE.Mesh(
-    new THREE.SphereGeometry(.062,24,20),
-    new THREE.MeshStandardMaterial({color:0xffffff,metalness:.08,roughness:.18,emissive:colorHex,emissiveIntensity:1.7})
+  const statusTex=makeXRSharpTextTexture('TRUY CẬP',{
+    font:'800 54px Segoe UI,Arial,sans-serif',color:'#f4fbff',glow:'rgba(255,255,255,.35)'
+  });
+  const status=new THREE.Mesh(
+    new THREE.PlaneGeometry(.3,.05),
+    new THREE.MeshBasicMaterial({map:statusTex,transparent:true,opacity:.9,depthWrite:false,toneMapped:false})
   );
-  block.add(core);
+  status.position.set(0,-.59,.02);
+  status.visible=false;
+  card.add(status);
 
-  const ring=new THREE.Mesh(
-    new THREE.TorusGeometry(.095,.008,14,44),
-    new THREE.MeshBasicMaterial({color:colorHex,transparent:true,opacity:.5,blending:THREE.AdditiveBlending,depthWrite:false})
-  );
-  ring.rotation.x=Math.PI*.5;
-  ring.position.y=-.01;
-  block.add(ring);
+  card.userData.xrUiAction='mode-'+mode;
+  card.userData.xrUiHover=false;
+  card.userData.xrUiBaseOpacity=.94;
+  card.userData.xrUiBaseScale=1;
+  card.userData.xrUiHoverScale=1.05;
+  card.userData.xrUiBaseZ=card.position.z;
+  card.userData.xrUiHoverZBoost=.055;
+  card.userData.modeColor=new THREE.Color(accent).getHex();
+  card.userData.modeGlow=glow;
+  card.userData.selectedBar=selectedBar;
+  card.userData.status=status;
+  card.userData.phase=index*.8;
+  card.userData.xrMenuHubCard=true;
 
-  const txt=makeXRSharpTextTexture(label,{font:'900 84px Orbitron,Segoe UI,Arial,sans-serif',color:'#f1fbff',glow:'rgba(255,255,255,.28)'});
-  const txtMesh=new THREE.Mesh(
-    new THREE.PlaneGeometry(.22,.07),
-    new THREE.MeshBasicMaterial({map:txt,transparent:true,depthWrite:false})
-  );
-  txtMesh.position.set(0,.105,.085);
-  block.add(txtMesh);
-
-  const descTex=makeXRSharpTextTexture(desc,{font:'700 44px Rajdhani,Segoe UI,Arial,sans-serif',color:'#d7ebff',glow:'rgba(180,220,255,.2)'});
-  const descMesh=new THREE.Mesh(
-    new THREE.PlaneGeometry(.22,.038),
-    new THREE.MeshBasicMaterial({map:descTex,transparent:true,depthWrite:false,opacity:.9})
-  );
-  descMesh.position.set(0,-.105,.084);
-  block.add(descMesh);
-
-  block.userData.xrUiAction='mode-'+mode;
-  block.userData.xrUiHover=false;
-  block.userData.xrUiBaseOpacity=.94;
-  block.userData.xrUiBaseScale=1;
-  block.userData.xrUiScaleTarget=block;
-  block.userData.core=core;
-  block.userData.ring=ring;
-  block.userData.modeColor=colorHex;
-  block.userData.floatY=pos.y;
-
-  xrMenuPanel.add(block);
-  xrInteractiveButtons.push(block);
-  xrMenuButtons.push(block);
-  xrMenuModeButtons[mode]=block;
-  xrMenuEnergyNodes.push(block);
-}
-
-function createXRNeonConnector(a,b,col=0x79e9ff){
-  const geo=new THREE.BufferGeometry().setFromPoints([a,b]);
-  const line=new THREE.Line(
-    geo,
-    new THREE.LineBasicMaterial({color:col,transparent:true,opacity:.62,blending:THREE.AdditiveBlending,depthWrite:false})
-  );
-  xrMenuPanel.add(line);
-  xrMenuEnergyLines.push(line);
+  xrMenuPanel.add(card);
+  xrInteractiveButtons.push(card);
+  xrMenuModeButtons[mode]=card;
 }
 
 function setupXRMenuUI(){
-  const backAura=new THREE.Mesh(
-    new THREE.CircleGeometry(1.22,64),
-    new THREE.MeshBasicMaterial({color:0x2ecfff,transparent:true,opacity:.12,blending:THREE.AdditiveBlending,depthTest:false,depthWrite:false})
+  const panelTexture=makeXRHubPanelTexture();
+  const hubPanel=new THREE.Mesh(
+    createCurvedPanelGeometry(XR_HUB_WIDTH,XR_HUB_HEIGHT,XR_HUB_CURVE,56),
+    new THREE.MeshBasicMaterial({
+      map:panelTexture,transparent:true,opacity:.9,
+      depthWrite:false,toneMapped:false,side:THREE.DoubleSide
+    })
   );
-  backAura.position.set(0,0,-.03);
-  xrMenuPanel.add(backAura);
-
-  const backAura2=new THREE.Mesh(
-    new THREE.CircleGeometry(.9,56),
-    new THREE.MeshBasicMaterial({color:0xff2d78,transparent:true,opacity:.1,blending:THREE.AdditiveBlending,depthTest:false,depthWrite:false})
-  );
-  backAura2.position.set(.18,.08,-.025);
-  xrMenuPanel.add(backAura2);
-
-  const panelTex=makeXRMenuPanelTexture();
-  const panel=new THREE.Mesh(
-    new THREE.PlaneGeometry(1.82,1.15),
-    new THREE.MeshBasicMaterial({map:panelTex,transparent:true,opacity:.98,depthTest:false,depthWrite:false})
-  );
-  panel.position.set(0,-.01,.005);
-  xrMenuPanel.add(panel);
+  hubPanel.position.set(0,XR_HUB_CENTER_Y,-.025);
+  xrMenuPanel.add(hubPanel);
 
   const panelGlow=new THREE.Mesh(
-    new THREE.PlaneGeometry(1.96,1.23),
-    new THREE.MeshBasicMaterial({color:0x7be9ff,transparent:true,opacity:.1,blending:THREE.AdditiveBlending,depthTest:false,depthWrite:false})
+    createCurvedPanelGeometry(2.68,1.6,XR_HUB_CURVE+.018,56),
+    new THREE.MeshBasicMaterial({
+      color:0x82eaff,transparent:true,opacity:.055,
+      blending:THREE.AdditiveBlending,depthWrite:false
+    })
   );
-  panelGlow.position.set(0,-.01,-.008);
+  panelGlow.position.set(0,XR_HUB_CENTER_Y,-.06);
   xrMenuPanel.add(panelGlow);
 
-  const titleTex=makeXRMenuTitleTexture('COLOR CIRCLE · VR');
-  const title=new THREE.Mesh(
-    new THREE.PlaneGeometry(1.24,.24),
-    new THREE.MeshBasicMaterial({map:titleTex,transparent:true,opacity:.95,depthTest:false,depthWrite:false})
+  const floorDisc=new THREE.Mesh(
+    new THREE.CircleGeometry(.98,72),
+    new THREE.MeshBasicMaterial({
+      color:0x07566c,transparent:true,opacity:.1,
+      blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide
+    })
   );
-  title.position.set(0,.35,.02);
-  xrMenuPanel.add(title);
+  floorDisc.rotation.x=-Math.PI*.5;
+  floorDisc.position.set(0,.018,.76);
+  xrMenuPanel.add(floorDisc);
 
-  const modeLabelTex=makeXRLabelTexture('Chon che do','#d6ebff');
-  const modeLabel=new THREE.Mesh(
-    new THREE.PlaneGeometry(.34,.06),
-    new THREE.MeshBasicMaterial({map:modeLabelTex,transparent:true,opacity:.92,depthTest:false,depthWrite:false})
+  [.28,.58,.94].forEach((radius,index)=>{
+    const ring=new THREE.Mesh(
+      new THREE.TorusGeometry(radius,.013+index*.003,10,96),
+      new THREE.MeshBasicMaterial({
+        color:index===1?0xa3f7ff:0x58e8ff,
+        transparent:true,
+        opacity:.68-index*.08,
+        blending:THREE.AdditiveBlending,
+        depthWrite:false
+      })
+    );
+    ring.rotation.x=Math.PI*.5;
+    ring.position.set(0,.032+index*.004,.76);
+    ring.userData.baseOpacity=.58-index*.07;
+    ring.userData.phase=index*.85;
+    ring.userData.baseScale=new THREE.Vector3(1,1,1);
+    xrMenuPanel.add(ring);
+    xrMenuAmbientNodes.push(ring);
+  });
+
+  xrMenuFocusCore=new THREE.Mesh(
+    new THREE.OctahedronGeometry(.058,1),
+    new THREE.MeshStandardMaterial({
+      color:0xffffff,metalness:.15,roughness:.08,
+      emissive:0x45eaff,emissiveIntensity:2.1
+    })
   );
-  modeLabel.position.set(-.58,.16,.02);
-  xrMenuPanel.add(modeLabel);
+  xrMenuFocusCore.position.set(0,.078,.76);
+  xrMenuPanel.add(xrMenuFocusCore);
 
-  const easyTex=makeXRMenuModeTexture('EASY','Khong gioi han thoi gian','#00ff88');
-  const hardTex=makeXRMenuModeTexture('HARD','Dua voi dong ho','#ff2d78');
-  const specialTex=makeXRMenuModeTexture('SPECIAL','Nho mau de chien thang','#00f5ff');
-  const archeryTex=makeXRMenuModeTexture('ARCHERY','VR ban ten mau','#8ee8ff');
-  const startTex=makeXRMenuStartTexture();
-
-  xrMenuModeButtons.easy=createXRMenuButton('EASY',-.25,.09,.44,.17,'mode-easy','#113b2b');
-  xrMenuModeButtons.hard=createXRMenuButton('HARD',.25,.09,.44,.17,'mode-hard','#3b1027');
-  xrMenuModeButtons.special=createXRMenuButton('SPECIAL',-.25,-.12,.44,.17,'mode-special','#2b103b');
-  xrMenuModeButtons.archery=createXRMenuButton('ARCHERY',.25,-.12,.44,.17,'mode-archery','#0f2f48');
-  const startBtn=createXRMenuButton('BAT DAU',0,-.3,.72,.2,'start-game','#3a340f');
-
-  xrMenuModeButtons.easy.material.map=easyTex;
-  xrMenuModeButtons.hard.material.map=hardTex;
-  xrMenuModeButtons.special.material.map=specialTex;
-  xrMenuModeButtons.archery.material.map=archeryTex;
-  startBtn.material.map=startTex;
-  startBtn.material.needsUpdate=true;
-
-  const easyGlow=new THREE.Mesh(new THREE.PlaneGeometry(.5,.24),new THREE.MeshBasicMaterial({color:0x00ff88,transparent:true,opacity:.14,blending:THREE.AdditiveBlending,depthTest:false,depthWrite:false}));
-  easyGlow.position.z=-.01;xrMenuModeButtons.easy.add(easyGlow);xrMenuModeButtons.easy.userData.modeGlow=easyGlow;
-  const hardGlow=new THREE.Mesh(new THREE.PlaneGeometry(.5,.24),new THREE.MeshBasicMaterial({color:0xff2d78,transparent:true,opacity:.14,blending:THREE.AdditiveBlending,depthTest:false,depthWrite:false}));
-  hardGlow.position.z=-.01;xrMenuModeButtons.hard.add(hardGlow);xrMenuModeButtons.hard.userData.modeGlow=hardGlow;
-  const specialGlow=new THREE.Mesh(new THREE.PlaneGeometry(.5,.24),new THREE.MeshBasicMaterial({color:0x00f5ff,transparent:true,opacity:.14,blending:THREE.AdditiveBlending,depthTest:false,depthWrite:false}));
-  specialGlow.position.z=-.01;xrMenuModeButtons.special.add(specialGlow);xrMenuModeButtons.special.userData.modeGlow=specialGlow;
-  const archeryGlow=new THREE.Mesh(new THREE.PlaneGeometry(.5,.24),new THREE.MeshBasicMaterial({color:0x8ee8ff,transparent:true,opacity:.14,blending:THREE.AdditiveBlending,depthTest:false,depthWrite:false}));
-  archeryGlow.position.z=-.01;xrMenuModeButtons.archery.add(archeryGlow);xrMenuModeButtons.archery.userData.modeGlow=archeryGlow;
-
-  startBtn.userData.xrUiBaseOpacity=.97;
-  startBtn.userData.xrUiBaseScale=1.02;
-  const startGlow=new THREE.Mesh(
-    new THREE.PlaneGeometry(.82,.25),
-    new THREE.MeshBasicMaterial({color:0xffd45a,transparent:true,opacity:.2,blending:THREE.AdditiveBlending,depthTest:false,depthWrite:false})
+  const focusHalo=new THREE.Mesh(
+    new THREE.SphereGeometry(.13,22,16),
+    new THREE.MeshBasicMaterial({
+      color:0x6df3ff,transparent:true,opacity:.14,
+      blending:THREE.AdditiveBlending,depthWrite:false
+    })
   );
-  startGlow.position.z=-.01;
-  startBtn.add(startGlow);
-  startBtn.userData.modeGlow=startGlow;
+  xrMenuFocusCore.add(focusHalo);
+  xrMenuFocusCore.userData.halo=focusHalo;
+
+  createXRMenuTitleBlock('COLOR CIRCLE VR',2.16,{
+    w:1.5,h:.27,d:.085,
+    body:0x12212d,
+    emissive:0x0c3446,
+    frameGlow:0xb8f0ff,
+    font:'900 104px Arial Black,Segoe UI,sans-serif',
+    textColor:'#f3fdff',
+    textGradient:['#71eaff','#ffffff','#ffd487'],
+    textGlow:'rgba(120,235,255,.5)'
+  });
+
+  createXRMenuHubCard('easy','DỄ',['TRẢI NGHIỆM','THƯ GIÃN'],'#65dcff',-.87,1);
+  createXRMenuHubCard('hard','KHÓ',['THỬ THÁCH','TỐC ĐỘ'],'#ff9a3d',-.29,2);
+  createXRMenuHubCard('special','ĐẶC BIỆT',['QUY TẮC & CÂU ĐỐ','ĐỘC ĐÁO'],'#bd70ff',.29,3);
+  createXRMenuHubCard('archery','BẮN CUNG',['ĐỘ CHÍNH XÁC','TUYỆT ĐỐI'],'#62e98e',.87,4);
+
+  const particleCount=42;
+  const particlePositions=new Float32Array(particleCount*3);
+  const particleBase=new Float32Array(particleCount*3);
+  const particlePhase=new Float32Array(particleCount);
+  for(let i=0;i<particleCount;i++){
+    const p=i*3;
+    particlePositions[p]=particleBase[p]=(Math.random()-.5)*(XR_HUB_WIDTH-.2);
+    particlePositions[p+1]=particleBase[p+1]=.75+Math.random()*1.3;
+    particlePositions[p+2]=particleBase[p+2]=getXRHubCurveZ(particlePositions[p])+.045+Math.random()*.018;
+    particlePhase[i]=Math.random()*Math.PI*2;
+  }
+  const particleGeo=new THREE.BufferGeometry();
+  particleGeo.setAttribute('position',new THREE.BufferAttribute(particlePositions,3));
+  const hubParticles=new THREE.Points(
+    particleGeo,
+    new THREE.PointsMaterial({
+      color:0xc9f7ff,size:.012,transparent:true,opacity:.55,
+      blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true
+    })
+  );
+  hubParticles.userData.base=particleBase;
+  hubParticles.userData.phase=particlePhase;
+  xrMenuPanel.userData.hubParticles=hubParticles;
+  xrMenuPanel.add(hubParticles);
 
   xrMenuPanel.visible=false;
   xrMenuPanel.renderOrder=9999;
@@ -914,35 +859,56 @@ function setupXRMenuUI(){
 
 function updateXRMenuVisual(){
   const t=performance.now()*.001;
-  ['easy','hard','special','archery'].forEach(mode=>{
-    const b=xrMenuModeButtons[mode];
-    if(!b) return;
+  ['easy','hard','special','archery'].forEach((mode,index)=>{
+    const card=xrMenuModeButtons[mode];
+    if(!card) return;
     const selected=G.mode===mode;
-    b.userData.xrUiBaseOpacity=selected?1:.82;
-    b.userData.xrUiBaseScale=selected?1.05:1;
-    if(!b.userData.xrUiHover){
-      b.material.opacity=b.userData.xrUiBaseOpacity;
-      b.scale.setScalar(b.userData.xrUiBaseScale);
+    const hovered=card.userData.xrUiHover;
+    card.userData.xrUiBaseOpacity=selected?1:.9;
+    card.userData.xrUiBaseScale=selected?1.018:1;
+    if(!hovered){
+      card.material.opacity=card.userData.xrUiBaseOpacity;
+      card.scale.setScalar(card.userData.xrUiBaseScale);
+      card.position.z=card.userData.xrUiBaseZ;
     }
-    if(b.userData.modeGlow&&b.userData.modeGlow.material){
-      b.userData.modeGlow.material.opacity=selected ? .3 : .1;
-    }
+    card.userData.modeGlow.material.opacity=hovered
+      ? .3
+      : (selected?.16:.07)+Math.sin(t*2+index)*.018;
+    card.userData.selectedBar.material.opacity=hovered?.95:(selected?.72:.3);
+    card.userData.selectedBar.scale.x=hovered?1.14:(selected?1:0.72);
+    card.userData.status.visible=hovered;
   });
 
-  xrMenuButtons.forEach(b=>{
-    if(!b||!b.userData) return;
-    if(b.userData.xrUiAction==='start-game'){
-      b.userData.xrUiBaseOpacity=.97;
-      b.userData.xrUiBaseScale=1.03;
-      if(!b.userData.xrUiHover){
-        b.material.opacity=.94+.04*Math.sin(t*2.2);
-        b.scale.setScalar(1.03+Math.sin(t*2.2)*.01);
-      }
-      if(b.userData.modeGlow&&b.userData.modeGlow.material){
-        b.userData.modeGlow.material.opacity=.16+.08*Math.sin(t*2.2);
-      }
-    }
+  xrMenuAmbientNodes.forEach((node,index)=>{
+    const pulse=.5+.5*Math.sin(t*(1.8+index*.2)+node.userData.phase);
+    node.material.opacity=node.userData.baseOpacity+pulse*.14;
+    const scale=1+pulse*(.018+index*.008);
+    const baseScale=node.userData.baseScale||new THREE.Vector3(1,1,1);
+    node.scale.set(baseScale.x*scale,baseScale.y*scale,baseScale.z*scale);
   });
+  const hubParticles=xrMenuPanel.userData.hubParticles;
+  if(hubParticles){
+    const pos=hubParticles.geometry.attributes.position.array;
+    const base=hubParticles.userData.base;
+    const phase=hubParticles.userData.phase;
+    for(let i=0;i<phase.length;i++){
+      const p=i*3;
+      pos[p]=base[p]+Math.sin(t*.8+phase[i])*.012;
+      pos[p+1]=base[p+1]+Math.sin(t*1.15+phase[i])*.018;
+    }
+    hubParticles.geometry.attributes.position.needsUpdate=true;
+    hubParticles.material.opacity=.42+Math.sin(t*1.7)*.12;
+  }
+  if(xrMenuFocusCore){
+    xrMenuFocusCore.rotation.y=t*1.1;
+    xrMenuFocusCore.rotation.x=t*.58;
+    const pulse=1+Math.sin(t*2.6)*.07;
+    xrMenuFocusCore.scale.setScalar(pulse);
+  }
+  if(xrMenuTitleRig){
+    xrMenuTitleRig.position.y=2.16+Math.sin(t*1.2)*.006;
+    xrMenuTitleRig.rotation.z=Math.sin(t*.62)*.0025;
+  }
 }
 
 function formatClockTime(totalSec){
@@ -1545,6 +1511,8 @@ function updateXRUITransform(){
     xrWristHud.visible=false;
     xrVictoryArena.visible=false;
     xrDefeatArena.visible=false;
+    xrMenuAnchorReady=false;
+    xrMenuReveal=0;
     return;
   }
   const xrCam=renderer.xr.isPresenting?renderer.xr.getCamera(camera):camera;
@@ -1586,6 +1554,8 @@ function updateXRUITransform(){
 
   updateXRWristHudTransform();
   if(G.active){
+    xrMenuAnchorReady=false;
+    xrMenuReveal=0;
     xrMenuPanel.visible=false;
     xrUiToggleGroup.visible=xrMouseSim.enabled&&!renderer.xr.isPresenting;
     xrCurvedHolo.visible=true;
@@ -1629,11 +1599,18 @@ function updateXRUITransform(){
     xrUiOpenAnim=0;
     xrMenuPanel.visible=true;
     updateXRMenuVisual();
-    xrUiTargetPos.copy(xrUiCamPos)
-      .addScaledVector(xrUiWorldForward,1.35)
-      .add(new THREE.Vector3(0,-.03+Math.sin(performance.now()*.0019)*.03,0));
-    xrMenuPanel.position.lerp(xrUiTargetPos,.2);
-    xrMenuPanel.lookAt(xrUiCamPos.x,xrMenuPanel.position.y,xrUiCamPos.z);
+    if(!xrMenuAnchorReady){
+      xrMenuAnchorPos.copy(xrUiCamPos)
+        .addScaledVector(xrUiWorldForward,1.72);
+      xrMenuAnchorPos.y=WORLD_FLOOR_Y;
+      xrMenuPanel.position.copy(xrMenuAnchorPos);
+      xrMenuPanel.lookAt(xrUiCamPos.x,xrMenuAnchorPos.y,xrUiCamPos.z);
+      xrMenuAnchorReady=true;
+      xrMenuReveal=0;
+    }
+    xrMenuReveal+=(1-xrMenuReveal)*.12;
+    const revealScale=.84+xrMenuReveal*.16;
+    xrMenuPanel.scale.setScalar(revealScale);
   }
 }
 
@@ -1643,9 +1620,12 @@ function setXRUIButtonHover(mesh,hovered){
   if(mesh.userData.xrUiAction==='vol-slider') return;
   const base=mesh.userData.xrUiBaseOpacity ?? .92;
   const baseScale=mesh.userData.xrUiBaseScale ?? 1;
-  if(mesh.material&&typeof mesh.material.opacity==='number') mesh.material.opacity=hovered?1:base;
+  const hoverScale=mesh.userData.xrUiHoverScale ?? 1.1;
+  if(mesh.material&&typeof mesh.material.opacity==='number'){
+    mesh.material.opacity=hovered?1:base;
+  }
   const target=mesh.userData.xrUiScaleTarget||mesh;
-  if(target&&target.scale) target.scale.setScalar(hovered?baseScale*1.1:baseScale);
+  if(target&&target.scale) target.scale.setScalar(hovered?baseScale*hoverScale:baseScale);
   if(typeof mesh.userData.xrUiBaseZ==='number'){
     const zBoost=mesh.userData.xrUiHoverZBoost ?? 0;
     mesh.position.z=hovered ? (mesh.userData.xrUiBaseZ+zBoost) : mesh.userData.xrUiBaseZ;
@@ -1654,7 +1634,10 @@ function setXRUIButtonHover(mesh,hovered){
     mesh.userData.xrUiGlow.material.opacity=hovered?.3:.08;
   }
   if(mesh.userData.modeGlow&&mesh.userData.modeGlow.material){
-    mesh.userData.modeGlow.material.opacity=hovered ? .38 : (mesh.userData.xrUiAction==='start-game' ? .2 : .1);
+    mesh.userData.modeGlow.material.opacity=hovered?.38:.1;
+  }
+  if(mesh.userData.xrMenuHubCard&&mesh.userData.status){
+    mesh.userData.status.visible=hovered;
   }
 }
 
@@ -1708,7 +1691,6 @@ function applyXRUIAction(action){
     }
     return;
   }
-  if(action==='start-game'){startGame();return;}
   if(action==='exit'){
     exitToMenu();
     toast('Đã thoát về menu', 'inf', 900);
