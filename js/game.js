@@ -417,7 +417,7 @@ function ensureXRWristHud(){
   xrWristHud.add(crown);
 
   xrWristHudPanelRig=new THREE.Group();
-  xrWristHudPanelRig.position.set(0,.095,.03);
+  xrWristHudPanelRig.position.set(0,.072,.028);
   xrWristHud.add(xrWristHudPanelRig);
 
   xrWristHudCanvas=document.createElement('canvas');
@@ -429,24 +429,24 @@ function ensureXRWristHud(){
   xrWristHudTexture.needsUpdate=true;
 
   xrWristHudGlow=new THREE.Mesh(
-    createCurvedPanelGeometry(.58,.13,.05,28),
+    createCurvedPanelGeometry(.4,.09,.035,28),
     new THREE.MeshBasicMaterial({color:0x73ecff,transparent:true,opacity:.15,blending:THREE.AdditiveBlending,depthTest:false,depthWrite:false,side:THREE.DoubleSide})
   );
   xrWristHudGlow.position.z=-.008;
   xrWristHudPanelRig.add(xrWristHudGlow);
 
   xrWristHudPanel=new THREE.Mesh(
-    createCurvedPanelGeometry(.54,.11,.045,28),
+    createCurvedPanelGeometry(.37,.075,.032,28),
     new THREE.MeshBasicMaterial({map:xrWristHudTexture,transparent:true,opacity:.98,depthTest:false,depthWrite:false,side:THREE.DoubleSide})
   );
   xrWristHudPanelRig.add(xrWristHudPanel);
 
   const menuTex=makeXRButtonTexture('MENU','#113241','#c9f4ff');
   xrWristMenuButton=new THREE.Mesh(
-    new THREE.PlaneGeometry(.15,.055),
+    new THREE.PlaneGeometry(.105,.043),
     new THREE.MeshBasicMaterial({map:menuTex,transparent:true,opacity:.96,depthTest:false,depthWrite:false})
   );
-  xrWristMenuButton.position.set(.17,-.072,.065);
+  xrWristMenuButton.position.set(.115,-.052,.052);
   xrWristMenuButton.userData.xrUiAction='ui-toggle';
   xrWristMenuButton.userData.xrUiBaseOpacity=.96;
   xrWristMenuButton.userData.xrUiBaseScale=1;

@@ -2,7 +2,8 @@
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const clk=new THREE.Clock();
 function animate(){
-  const t=clk.getElapsedTime(),dt=clk.getDelta();
+  const dt=Math.min(clk.getDelta(),.05);
+  const t=clk.elapsedTime;
   sMat.uniforms.uT.value=t;galMat.uniforms.uT.value=t;
   galaxy.rotation.z=t*.018;astGroup.rotation.y=t*.008;
   rim.intensity=3.5+Math.sin(t*.65)*.9;fill.intensity=2.5+Math.cos(t*.48)*.7;back.intensity=1+Math.sin(t*.3)*.5;
