@@ -26,7 +26,8 @@ function pulseM(mesh){let t=0;(function step(){t+=.09;mesh.scale.setScalar(t>=1?
 
 function spawnParticles(pos,hex,success){
   const {r,g,b}=h2c(hex);
-  const n=success?20:12;
+  const perf=(typeof VR_PERF!=='undefined')?VR_PERF:null;
+  const n=success?(perf?.burstSuccess||16):(perf?.burstFail||10);
   for(let i=0;i<n;i++){
     const geo=new THREE.SphereGeometry(.045,6,6);
     const mat=new THREE.MeshBasicMaterial({color:new THREE.Color(r,g,b),transparent:true,opacity:.9});
@@ -41,10 +42,18 @@ function spawnParticles(pos,hex,success){
     burstParticles.push({mesh:rg,vel:new THREE.Vector3(0,0,0),life:1,ring:true});
   }
 }
+function disposeBurstMesh(mesh){
+  if(!mesh) return;
+  scene.remove(mesh);
+  if(mesh.geometry&&typeof mesh.geometry.dispose==='function') mesh.geometry.dispose();
+  const mat=mesh.material;
+  if(Array.isArray(mat)) mat.forEach(m=>m&&typeof m.dispose==='function'&&m.dispose());
+  else if(mat&&typeof mat.dispose==='function') mat.dispose();
+}
 function updateBurst(dt){
   for(let i=burstParticles.length-1;i>=0;i--){
     const p=burstParticles[i];p.life-=dt*(p.ring?2:1.5);
-    if(p.life<=0){scene.remove(p.mesh);burstParticles.splice(i,1);continue;}
+    if(p.life<=0){disposeBurstMesh(p.mesh);burstParticles.splice(i,1);continue;}
     if(p.ring){p.mesh.scale.setScalar(1+(1-p.life)*3.5);p.mesh.material.opacity=p.life*.7;}
     else{p.vel.y-=dt*4;p.mesh.position.addScaledVector(p.vel,dt);p.mesh.material.opacity=p.life*.9;p.mesh.scale.setScalar(Math.max(.1,p.life*.9));}
   }
@@ -133,6 +142,7 @@ function startGame(){
   }
   clearGameTimeouts();
   resumeAC();G.lvIdx=0;G.score=0;G.combo=1;G.maxCombo=1;G.active=true;G.phase='idle';G.specialHidden=false;G.specialLocked=false;xrDragController=null;xrIngameMenuOpen=false;xrUiSliderDragController=null;xrUiView='main';updateXRUIViews();
+  if(G.mode==='archery') xrArchery.anchorValid=false;
   document.getElementById('scr-menu').classList.add('off');
   document.getElementById('scr-result').classList.add('off');
   ['hud','prog-wrap'].forEach(id=>{document.getElementById(id).style.display=id==='hud'?'flex':'block';});
@@ -345,7 +355,12 @@ function handleInputEnd() {
 document.addEventListener('mousedown', e => {
   if(!VR_DEV_MODE&&!xrMouseSim.enabled) return;
   if(xrMouseSim.enabled){
-    if(e.button===0) onXRSelectStart({target:xrMouseSim.controller});
+    if(e.button===0){
+      xrMouseSim.archeryMouseDown=true;
+      xrMouseSim.grabStartY=e.clientY;
+      xrMouseSim.grabStartDepth=xrMouseSim.handDepth;
+      onXRSelectStart({target:xrMouseSim.controller});
+    }
     return;
   }
   if (e.button === 0) handleInputStart(e.clientX, e.clientY);
@@ -361,6 +376,14 @@ document.addEventListener('mousemove', e => {
   tip.style.left = (e.clientX + 18) + 'px';
   tip.style.top = (e.clientY - 8) + 'px';
   if(xrMouseSim.enabled){
+    if(
+      xrMouseSim.archeryMouseDown&&
+      G.mode==='archery'&&
+      xrArchery.arrowHoldController===xrMouseSim.controller
+    ){
+      const dragY=e.clientY-xrMouseSim.grabStartY;
+      xrMouseSim.handDepth=Math.max(.08,Math.min(.55,xrMouseSim.grabStartDepth-dragY*.0024));
+    }
     updateXRMouseSimController();
     return;
   }
@@ -370,7 +393,12 @@ document.addEventListener('mousemove', e => {
 document.addEventListener('mouseup', e => {
   if(!VR_DEV_MODE&&!xrMouseSim.enabled) return;
   if(xrMouseSim.enabled){
-    if(e.button===0) onXRSelectEnd({target:xrMouseSim.controller});
+    if(e.button===0){
+      onXRSelectEnd({target:xrMouseSim.controller});
+      xrMouseSim.archeryMouseDown=false;
+      xrMouseSim.handDepth=.38;
+      updateXRMouseSimController();
+    }
     return;
   }
   if (e.button === 0) handleInputEnd();
@@ -402,7 +430,12 @@ document.addEventListener('keydown', e => {
     setXRMouseSimEnabled(!xrMouseSim.enabled);
     return;
   }
-  if(xrMouseSim.enabled&&(e.key==='r'||e.key==='R'||e.key==='t'||e.key==='T')){
+  if(xrMouseSim.enabled&&(e.key==='r'||e.key==='R')){
+    if(e.repeat) return;
+    if(G.mode==='archery'&&toggleXRMouseSimBow()) return;
+    return;
+  }
+  if(xrMouseSim.enabled&&(e.key==='t'||e.key==='T')){
     tryXRMoveByTrigger(xrMouseSim.controller);
     return;
   }

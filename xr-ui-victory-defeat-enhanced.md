@@ -1,4 +1,27 @@
-﻿const xrUiPanel = new THREE.Group();
+# xr-ui-victory-defeat-enhanced.js
+
+File này đã chỉnh sửa giao diện **Victory** và **Defeat** cho VR theo hướng rõ ràng, đẹp hơn và thân thiện hơn.
+
+## Các thay đổi chính
+
+### Victory
+- Làm lại banner **VICTORY** lớn hơn, có khung hologram, crown và badge **HOÀN THÀNH XUẤT SẮC**.
+- Tách thống kê thành 4 thẻ rõ ràng: **LEVEL**, **SCORE**, **TIME**, **COMBO**.
+- Thêm icon cho từng thẻ: ngôi sao, cúp, đồng hồ, combo.
+- Tăng kích thước nút **MENU** và **CHƠI LẠI**, thêm glow và hover scale rõ hơn.
+- Thêm vòng sáng, bục hologram, orbs và sparkles để tạo cảm giác chiến thắng.
+
+### Defeat
+- Làm lại banner **TRY AGAIN** với khung cảnh báo mềm, không quá tiêu cực.
+- Thêm dòng phụ: **BÌNH TĨNH • RÚT KINH NGHIỆM • THỬ LẠI**.
+- Chuyển phần thống kê Defeat từ dạng text dọc sang 4 thẻ trực quan.
+- Tăng độ nổi bật của nút **MENU** và **THỬ LẠI**.
+- Thêm smoke, ring và shard nhẹ để tạo cảm giác thất bại nhưng vẫn thân thiện.
+
+## Code đầy đủ
+
+```js
+const xrUiPanel = new THREE.Group();
 const xrUiButtons = [];
 const xrUiToggleGroup = new THREE.Group();
 const xrMenuPanel = new THREE.Group();
@@ -663,21 +686,11 @@ function makeXRHubPanelTexture(){
   ctx.textAlign='center';
   ctx.textBaseline='middle';
   ctx.fillStyle='rgba(212,246,255,.62)';
-  ctx.font='700 21px Segoe UI,Arial,sans-serif';
-  ctx.fillStyle='rgba(219,248,255,.44)';
-
-  const footerCover=ctx.createLinearGradient(0,h-140,0,h-46);
-  footerCover.addColorStop(0,'rgba(13,26,42,.92)');
-  footerCover.addColorStop(1,'rgba(6,14,25,.96)');
-  ctx.fillStyle=footerCover;
-  ctx.fillRect(190,h-132,w-380,92);
-  ctx.font='800 25px Segoe UI,Arial,sans-serif';
-  ctx.textAlign='center';
-  ctx.textBaseline='middle';
-  ctx.fillStyle='rgba(212,246,255,.72)';
   ctx.fillText('CHỌN CHẾ ĐỘ LUYỆN TẬP',w*.5,h-104);
   ctx.font='700 21px Segoe UI,Arial,sans-serif';
-  ctx.fillStyle='rgba(219,248,255,.62)';
+  ctx.fillStyle='rgba(219,248,255,.44)';
+  ctx.fillText('Nhìn vào thẻ • Nhấn Trigger để bắt đầu',w*.5,h-70);
+
   const tex=new THREE.CanvasTexture(cnv);
   tex.anisotropy=renderer.capabilities.getMaxAnisotropy();
   tex.needsUpdate=true;
@@ -692,15 +705,6 @@ function makeXRMenuInfoPanelTexture(title,lines,accent='#65dcff',footer=''){
   const w=cnv.width,h=cnv.height;
   const ac=h2c(accent);
   const rgb=`${ac.r*255|0},${ac.g*255|0},${ac.b*255|0}`;
-  if(accent==='#65dcff'){
-    title='CÁCH CHƠI';
-    lines=['Chọn chế độ bằng tia VR','Ghép đúng màu vào vòng','Tạo combo để tăng điểm'];
-    footer='Gợi ý: đứng yên khi chọn';
-  }else if(accent==='#ffd487'){
-    title='TRẢI NGHIỆM VR';
-    lines=['Thẻ sáng khi trỏ vào','Có phản hồi hover rõ ràng','Menu cong để nhìn trong kính'];
-    footer='Ưu tiên đọc rõ, ít gây chóng mặt';
-  }
   ctx.clearRect(0,0,w,h);
 
   const bg=ctx.createLinearGradient(0,0,0,h);
@@ -797,7 +801,6 @@ function createXRMenuInfoPanel(title,lines,x,y,accent,footer,side=1){
 }
 
 function makeXRGuidePillTexture(text){
-  text='Nhìn vào thẻ và nhấn Trigger để bắt đầu';
   const cnv=document.createElement('canvas');
   cnv.width=1300;cnv.height=180;
   const ctx=cnv.getContext('2d');
@@ -1286,11 +1289,11 @@ function setupXRMenuUI(){
   createXRMenuColorPortal();
 
   createXRMenuTitleBlock('COLOR CIRCLE VR',2.21,{
-    w:1.86,h:.29,d:.09,
+    w:1.65,h:.29,d:.09,
     body:0x12212d,
     emissive:0x0c3446,
     frameGlow:0xb8f0ff,
-    font:'900 92px Arial Black,Segoe UI,sans-serif',
+    font:'900 108px Arial Black,Segoe UI,sans-serif',
     textColor:'#f3fdff',
     textGradient:['#71eaff','#ffffff','#ffd487'],
     textGlow:'rgba(120,235,255,.5)'
@@ -1304,7 +1307,7 @@ function setupXRMenuUI(){
   );
   xrMenuRightInfoRig=createXRMenuInfoPanel(
     'TRẢI NGHIỆM VR',
-    ['Thẻ sáng khi trỏ vào','Có phản hồi hover rõ ràng','Menu cong để nhìn trong kính'],
+    ['Thẻ sáng khi trỏ vào','Có phản hồi hover rõ ràng','Menu cong dễ nhìn trong kính'],
     1.62,1.35,'#ffd487','Ưu tiên đọc rõ, ít gây chóng mặt',1
   );
 
@@ -1312,7 +1315,8 @@ function setupXRMenuUI(){
   createXRMenuHubCard('hard','KHÓ',['THỬ THÁCH','TỐC ĐỘ'],'#ff9a3d',-.31,2);
   createXRMenuHubCard('special','ĐẶC BIỆT',['QUY TẮC & CÂU ĐỐ','ĐỘC ĐÁO'],'#bd70ff',.31,3);
   createXRMenuHubCard('archery','BẮN CUNG',['ĐỘ CHÍNH XÁC','TUYỆT ĐỐI'],'#62e98e',.93,4);
-  const particleCount=(typeof VR_PERF!=='undefined')?VR_PERF.menuParticles:56;
+
+  const particleCount=72;
   const particlePositions=new Float32Array(particleCount*3);
   const particleBase=new Float32Array(particleCount*3);
   const particlePhase=new Float32Array(particleCount);
@@ -1444,6 +1448,7 @@ function formatClockTime(totalSec){
   const m=Math.floor(s/60);
   return m+':'+String(s%60).padStart(2,'0');
 }
+
 
 function drawXRResultCard(ctx,x,y,w,h,item,opt={}){
   const accent=item.c||'#7eeaff';
@@ -1578,23 +1583,22 @@ function createXRVictoryButton(label,x,y,action,bg='#13344b'){
   const tex=makeXRButtonTexture(label,bg,'#f5feff');
   const mat=new THREE.MeshBasicMaterial({map:tex,transparent:true,opacity:1,depthTest:false,depthWrite:false,toneMapped:false});
   const mesh=new THREE.Mesh(new THREE.PlaneGeometry(.72,.23),mat);
-  mesh.position.set(x,y,.18);
-  mesh.renderOrder=10120;
+  mesh.position.set(x,y,.12);
+  mesh.renderOrder=10020;
 
   const glow=new THREE.Mesh(
     new THREE.PlaneGeometry(.84,.31),
     new THREE.MeshBasicMaterial({color:0x86f6ff,transparent:true,opacity:.28,blending:THREE.AdditiveBlending,depthTest:false,depthWrite:false,toneMapped:false})
   );
-  glow.position.z=-.028;
-  glow.renderOrder=10110;
+  glow.position.z=-.012;
+  glow.renderOrder=10019;
   mesh.add(glow);
 
   const underGlow=new THREE.Mesh(
     new THREE.PlaneGeometry(.78,.055),
     new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.18,blending:THREE.AdditiveBlending,depthTest:false,depthWrite:false,toneMapped:false})
   );
-  underGlow.position.set(0,-.13,-.03);
-  underGlow.renderOrder=10105;
+  underGlow.position.set(0,-.13,-.014);
   mesh.add(underGlow);
 
   mesh.userData.xrUiAction=action;
@@ -1614,23 +1618,22 @@ function createXRDefeatButton(label,x,y,action,bg='#40222b'){
   const tex=makeXRButtonTexture(label,bg,'#fff4f7');
   const mat=new THREE.MeshBasicMaterial({map:tex,transparent:true,opacity:1,depthTest:false,depthWrite:false,toneMapped:false});
   const mesh=new THREE.Mesh(new THREE.PlaneGeometry(.72,.23),mat);
-  mesh.position.set(x,y,.18);
-  mesh.renderOrder=10120;
+  mesh.position.set(x,y,.12);
+  mesh.renderOrder=10020;
 
   const glow=new THREE.Mesh(
     new THREE.PlaneGeometry(.84,.31),
     new THREE.MeshBasicMaterial({color:0xff8fb4,transparent:true,opacity:.28,blending:THREE.AdditiveBlending,depthTest:false,depthWrite:false,toneMapped:false})
   );
-  glow.position.z=-.028;
-  glow.renderOrder=10110;
+  glow.position.z=-.012;
+  glow.renderOrder=10019;
   mesh.add(glow);
 
   const underGlow=new THREE.Mesh(
     new THREE.PlaneGeometry(.78,.055),
     new THREE.MeshBasicMaterial({color:0xffd4e2,transparent:true,opacity:.16,blending:THREE.AdditiveBlending,depthTest:false,depthWrite:false,toneMapped:false})
   );
-  underGlow.position.set(0,-.13,-.03);
-  underGlow.renderOrder=10105;
+  underGlow.position.set(0,-.13,-.014);
   mesh.add(underGlow);
 
   mesh.userData.xrUiAction=action;
@@ -1680,7 +1683,7 @@ function drawXRVictoryTexts(){
   tctx.fillStyle='#fff1b8';
   tctx.font='900 38px Segoe UI,Arial,sans-serif';
   tctx.shadowColor='rgba(255,214,120,.7)';tctx.shadowBlur=14;
-  tctx.fillText('HOÀN THÀNH',tw*.5,badgeY+badgeH*.55);
+  tctx.fillText('HOÀN THÀNH XUẤT SẮC',tw*.5,badgeY+badgeH*.55);
   tctx.shadowBlur=0;
   xrVictoryTitleTexture.needsUpdate=true;
 
@@ -1736,8 +1739,7 @@ function ensureXRVictoryArena(){
     xrVictoryAnimatedNodes.push(ring);
   });
 
-  const victoryOrbCount=(typeof VR_PERF!=='undefined')?VR_PERF.victoryOrbs:22;
-  for(let i=0;i<victoryOrbCount;i++){
+  for(let i=0;i<28;i++){
     const col=i%4===0?0x8eefff:(i%4===1?0xa992ff:(i%4===2?0xffd978:0x68b7ff));
     const orb=new THREE.Mesh(
       new THREE.SphereGeometry(.022+(i%4)*.003,12,10),
@@ -1754,7 +1756,7 @@ function ensureXRVictoryArena(){
   }
 
   const sparkGeo=new THREE.BufferGeometry();
-  const sparkN=(typeof VR_PERF!=='undefined')?VR_PERF.victorySparkles:110;
+  const sparkN=140;
   const sparkPos=new Float32Array(sparkN*3);
   for(let i=0;i<sparkN;i++){
     const a=Math.random()*Math.PI*2;
@@ -1854,10 +1856,10 @@ function ensureXRVictoryArena(){
 
   const buttonBack=new THREE.Mesh(
     new THREE.PlaneGeometry(1.72,.38),
-    new THREE.MeshBasicMaterial({color:0x0b2340,transparent:true,opacity:.2,depthTest:false,depthWrite:false,toneMapped:false})
+    new THREE.MeshBasicMaterial({color:0x0b2340,transparent:true,opacity:.38,depthTest:false,depthWrite:false,toneMapped:false})
   );
-  buttonBack.position.z=-.16;
-  buttonBack.renderOrder=10000;
+  buttonBack.position.z=-.025;
+  buttonBack.renderOrder=10001;
   xrVictoryButtonsRig.add(buttonBack);
 
   xrVictoryTitleRig.position.set(0,.9,.1);
@@ -1869,8 +1871,8 @@ function ensureXRVictoryArena(){
 
   const menuBtn=createXRVictoryButton('MENU',-.42,0,'victory-menu','#31175f');
   const replayBtn=createXRVictoryButton('CHƠI LẠI',.42,0,'victory-replay','#0f4a3c');
-  menuBtn.position.z=.2;
-  replayBtn.position.z=.24;
+  menuBtn.position.z=.03;
+  replayBtn.position.z=.09;
   menuBtn.userData.xrUiBaseZ=menuBtn.position.z;
   replayBtn.userData.xrUiBaseZ=replayBtn.position.z;
   menuBtn.userData.xrUiHoverZBoost=.09;
@@ -1917,7 +1919,7 @@ function drawXRDefeatTexts(){
   tctx.fillStyle='#ffe2d8';
   tctx.font='900 35px Segoe UI,Arial,sans-serif';
   tctx.shadowColor='rgba(255,155,120,.7)';tctx.shadowBlur=12;
-  tctx.fillText('BẤT HƯƠNG • RÚT KINH NGHIỆM • THỬ LẠI',tw*.5,badgeY+badgeH*.55);
+  tctx.fillText('BÌNH TĨNH • RÚT KINH NGHIỆM • THỬ LẠI',tw*.5,badgeY+badgeH*.55);
   tctx.shadowBlur=0;
   xrDefeatTitleTexture.needsUpdate=true;
 
@@ -1985,7 +1987,7 @@ function ensureXRDefeatArena(){
   });
 
   const smokeGeo=new THREE.BufferGeometry();
-  const smokeN=(typeof VR_PERF!=='undefined')?VR_PERF.defeatSmoke:150;
+  const smokeN=220;
   const smokePos=new Float32Array(smokeN*3);
   for(let i=0;i<smokeN;i++){
     const a=Math.random()*Math.PI*2;
@@ -2065,10 +2067,10 @@ function ensureXRDefeatArena(){
 
   const buttonBack=new THREE.Mesh(
     new THREE.PlaneGeometry(1.72,.38),
-    new THREE.MeshBasicMaterial({color:0x34101a,transparent:true,opacity:.22,depthTest:false,depthWrite:false,toneMapped:false})
+    new THREE.MeshBasicMaterial({color:0x34101a,transparent:true,opacity:.46,depthTest:false,depthWrite:false,toneMapped:false})
   );
-  buttonBack.position.z=-.16;
-  buttonBack.renderOrder=10000;
+  buttonBack.position.z=-.02;
+  buttonBack.renderOrder=10001;
   xrDefeatButtonsRig.add(buttonBack);
 
   xrDefeatTitleRig.position.set(0,.76,.04);
@@ -2083,7 +2085,7 @@ function ensureXRDefeatArena(){
   xrDefeatArena.add(xrDefeatButtonsRig);
 
   const menuBtn=createXRDefeatButton('MENU',-.42,0,'defeat-menu','#3a1325');
-  const replayBtn=createXRDefeatButton('CHƠI LẠI',.42,0,'defeat-replay','#4a2412');
+  const replayBtn=createXRDefeatButton('THỬ LẠI',.42,0,'defeat-replay','#4a2412');
   menuBtn.userData.xrUiBaseZ=menuBtn.position.z;
   replayBtn.userData.xrUiBaseZ=replayBtn.position.z;
   menuBtn.userData.xrUiHoverZBoost=.085;
@@ -2184,17 +2186,17 @@ function hideXRArenas(){
 function updateXRVictoryArena(dt){
   if(!xrVictoryActive||!xrVictoryArena.visible) return;
   xrVictoryPulse+=dt*1.9;
-  const p=1+Math.sin(xrVictoryPulse)*.026;
+  const p=1+Math.sin(xrVictoryPulse)*.028;
   if(xrVictoryTitleRig){
     xrVictoryTitleRig.scale.setScalar(p);
     xrVictoryTitleRig.position.set(
-      Math.sin(xrVictoryPulse*1.2)*.03,
-      .9+Math.cos(xrVictoryPulse*1.5)*.02,
-      .1+Math.sin(xrVictoryPulse*.9)*.02
+      Math.sin(xrVictoryPulse*1.2)*.025,
+      .9+Math.cos(xrVictoryPulse*1.5)*.018,
+      .1+Math.sin(xrVictoryPulse*.9)*.018
     );
-    xrVictoryTitleRig.rotation.y=Math.sin(xrVictoryPulse*.45)*.12;
+    xrVictoryTitleRig.rotation.y=Math.sin(xrVictoryPulse*.45)*.08;
   }
-  if(xrVictoryStatsRig) xrVictoryStatsRig.scale.setScalar(1+Math.sin(xrVictoryPulse*.8)*.015);
+  if(xrVictoryStatsRig) xrVictoryStatsRig.scale.setScalar(1+Math.sin(xrVictoryPulse*.8)*.016);
   xrVictoryAnimatedNodes.forEach((n,i)=>{
     if(!n) return;
     if(n.userData&&n.userData.vt==='ring'){
@@ -2209,9 +2211,14 @@ function updateXRVictoryArena(dt){
       if(n.material) n.material.opacity=(n.userData.baseOpacity||.54)+Math.sin(xrVictoryPulse*2.4+i)*.1;
       return;
     }
+    if(n.userData&&n.userData.vt==='sparkles'){
+      n.rotation.y+=dt*.08;
+      if(n.material) n.material.opacity=(n.userData.baseOpacity||.42)+Math.sin(xrVictoryPulse*1.2+i)*.08;
+      return;
+    }
     if(n.userData&&n.userData.vt==='stat-card'){
-      n.position.y=(n.userData.baseY||n.position.y)+Math.sin(xrVictoryPulse*1.35+(n.userData.floatPhase||0))*.012;
-      n.rotation.z=Math.sin(xrVictoryPulse*.7+(n.userData.floatPhase||0))*.02;
+      n.position.y=(n.userData.baseY||n.position.y)+Math.sin(xrVictoryPulse*1.35+(n.userData.floatPhase||0))*.014;
+      n.rotation.z=Math.sin(xrVictoryPulse*.7+(n.userData.floatPhase||0))*.018;
       return;
     }
     n.rotation.z+=dt*(.18+i*.04);
@@ -2222,16 +2229,33 @@ function updateXRDefeatArena(dt){
   if(!xrDefeatActive||!xrDefeatArena.visible) return;
   xrDefeatPulse+=dt*1.5;
   if(xrDefeatTitleRig){
-    xrDefeatTitleRig.scale.setScalar(1+Math.sin(xrDefeatPulse)*.015);
+    xrDefeatTitleRig.scale.setScalar(1+Math.sin(xrDefeatPulse)*.018);
     xrDefeatTitleRig.position.set(
-      Math.sin(xrDefeatPulse*2.15)*.005,
-      .76+Math.cos(xrDefeatPulse*1.9)*.0035,
+      Math.sin(xrDefeatPulse*2.15)*.008,
+      .76+Math.cos(xrDefeatPulse*1.9)*.008,
       .04
     );
+    xrDefeatTitleRig.rotation.y=Math.sin(xrDefeatPulse*.42)*.05;
   }
-  if(xrDefeatStatsRig) xrDefeatStatsRig.scale.setScalar(1+Math.cos(xrDefeatPulse*.7)*.008);
+  if(xrDefeatStatsRig) xrDefeatStatsRig.scale.setScalar(1+Math.cos(xrDefeatPulse*.7)*.01);
   xrDefeatAnimatedNodes.forEach((n,i)=>{
     if(!n) return;
+    if(n.userData&&n.userData.vt==='defeat-ring'){
+      n.rotation.y+=dt*(n.userData.vSpeed||-.25);
+      if(n.material) n.material.opacity=(n.userData.baseOpacity||.24)+Math.sin(xrDefeatPulse*.9+i)*.045;
+      return;
+    }
+    if(n.userData&&n.userData.vt==='defeat-smoke'){
+      n.rotation.y-=dt*.08;
+      if(n.material) n.material.opacity=(n.userData.baseOpacity||.2)+Math.sin(xrDefeatPulse*.7+i)*.045;
+      return;
+    }
+    if(n.userData&&n.userData.vt==='defeat-shard'){
+      n.rotation.x+=dt*(n.userData.spin||.25);
+      n.rotation.z-=dt*((n.userData.spin||.25)*.7);
+      if(n.material) n.material.opacity=(n.userData.baseOpacity||.3)+Math.sin(xrDefeatPulse*1.2+i)*.05;
+      return;
+    }
     n.rotation.z-=dt*(.1+i*.03);
     if(n.material) n.material.opacity=.2+Math.sin(xrDefeatPulse*.9+i)*.08;
   });
@@ -2396,7 +2420,7 @@ function applyXRUIAction(action){
     xrUiView='main';
     updateXRUIViews();
     const started=startGame();
-    if(started!==false) toast('chon '+label, 'inf', 700);
+    if(started!==false) toast('Đã chọn '+label, 'inf', 700);
   }
 
   if(action==='victory-menu'){hideXRVictoryArena();showMenu();return;}
@@ -2413,7 +2437,7 @@ function applyXRUIAction(action){
   if(action==='ui-open-level'){xrUiView='level';updateXRUIViews();return;}
   if(action==='ui-open-setting'){xrUiView='setting';updateXRUIViews();return;}
   if(action==='ui-back-main'){xrUiView='main';updateXRUIViews();return;}
-  if(action==='ui-quit-game'){exitToMenu();toast('thoat ve menu', 'inf', 900);return;}
+  if(action==='ui-quit-game'){exitToMenu();toast('Đã thoát về menu', 'inf', 900);return;}
   if(action==='vol-slider') return;
   if(action==='mode-easy'){
     startXRMode('easy','EASY');
@@ -2441,6 +2465,10 @@ function applyXRUIAction(action){
   }
   if(action==='exit'){
     exitToMenu();
-    toast('thoat ve menu', 'inf', 900);
+    toast('Đã thoát về menu', 'inf', 900);
   }
 }
+
+
+
+```

@@ -1,14 +1,36 @@
 ﻿//  THREE SETUP
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const canvas=document.getElementById('c');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
-renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const IS_QUEST_BROWSER=/Quest|OculusBrowser|MetaQuest/i.test(navigator.userAgent);
+const VR_PERF={
+  isQuest:IS_QUEST_BROWSER,
+  pixelRatio:IS_QUEST_BROWSER ? 1.2 : Math.min(devicePixelRatio,1.5),
+  xrFramebufferScale:IS_QUEST_BROWSER ? .82 : .92,
+  stars:IS_QUEST_BROWSER ? 850 : 1400,
+  ambientParticles:IS_QUEST_BROWSER ? 72 : 120,
+  asteroids:IS_QUEST_BROWSER ? 28 : 44,
+  menuParticles:IS_QUEST_BROWSER ? 38 : 56,
+  victoryOrbs:IS_QUEST_BROWSER ? 14 : 22,
+  victorySparkles:IS_QUEST_BROWSER ? 70 : 110,
+  defeatSmoke:IS_QUEST_BROWSER ? 90 : 150,
+  burstSuccess:IS_QUEST_BROWSER ? 10 : 16,
+  burstFail:IS_QUEST_BROWSER ? 6 : 10
+};
+renderer.setPixelRatio(VR_PERF.pixelRatio);
 renderer.setSize(innerWidth,innerHeight);
 renderer.shadowMap.enabled=true;
 renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure=1.3;
 renderer.xr.enabled=true;
+if(renderer.xr.setFramebufferScaleFactor){
+  renderer.xr.setFramebufferScaleFactor(VR_PERF.xrFramebufferScale);
+}
+
+function setVRPerformanceMode(active){
+  renderer.shadowMap.enabled=!active;
+  renderer.setPixelRatio(active ? Math.min(VR_PERF.pixelRatio,1.1) : VR_PERF.pixelRatio);
+}
 
 function setXRStatus(message,type='warn'){
   let el=document.getElementById('xr-status');
@@ -115,11 +137,13 @@ function createNativeVRButton(){
     btn.textContent='EXIT VR';
     btn.style.opacity='1';
     setXRStatus('Đã vào VR', 'ok');
+    setVRPerformanceMode(true);
     alignVRToDesktopView();
     refreshPresentationMode();
   });
   renderer.xr.addEventListener('sessionend',()=>{
     btn.textContent='ENTER VR';
+    setVRPerformanceMode(false);
     setXRStatus('Đã thoát VR');
   });
 
@@ -139,8 +163,8 @@ if(THREE.VRButton&&THREE.VRButton.createButton){
   vrBtn.style.opacity='1';
   document.body.appendChild(vrBtn);
 
-  renderer.xr.addEventListener('sessionstart',()=>{setXRStatus('Đã vào VR', 'ok');alignVRToDesktopView();});
-  renderer.xr.addEventListener('sessionend',()=>setXRStatus('Đã thoát VR'));
+  renderer.xr.addEventListener('sessionstart',()=>{setXRStatus('Đã vào VR', 'ok');setVRPerformanceMode(true);alignVRToDesktopView();});
+  renderer.xr.addEventListener('sessionend',()=>{setVRPerformanceMode(false);setXRStatus('Đã thoát VR');});
 
   if(!isSecureContext){
     setXRStatus('VR cần HTTPS hoặc localhost');
@@ -161,6 +185,55 @@ if(THREE.VRButton&&THREE.VRButton.createButton){
 }else{
   createNativeVRButton();
 }
+
+function createArcherySimulatorButton(){
+  if(!VR_DEV_MODE) return null;
+  const btn=document.createElement('button');
+  btn.id='archery-sim-btn';
+  btn.textContent='TEST ARCHERY';
+  btn.title='R: cầm/đặt cung · Chuột trái: chọn rune/chạm dây · Thả chuột: bắn';
+  btn.style.position='fixed';
+  btn.style.left='16px';
+  btn.style.bottom='16px';
+  btn.style.padding='10px 14px';
+  btn.style.borderRadius='8px';
+  btn.style.border='1px solid rgba(255,190,70,.75)';
+  btn.style.background='rgba(28,13,2,.9)';
+  btn.style.color='#ffe3a0';
+  btn.style.font='700 12px/1.1 Orbitron,Segoe UI,Arial,sans-serif';
+  btn.style.letterSpacing='.08em';
+  btn.style.cursor='pointer';
+  btn.style.zIndex='99999';
+
+  btn.addEventListener('click',()=>{
+    const enabling=!xrMouseSim.enabled;
+    setXRMouseSimEnabled(enabling);
+    if(enabling){
+      selMode('archery');
+      startGame();
+      toast('R: cầm cung · Chọn rune · Click tâm dây · Kéo xuống · Thả để bắn', 'inf', 2800);
+    }else if(G.active&&G.mode==='archery'){
+      showMenu();
+    }
+  });
+
+  const syncVisibility=()=>{
+    const inVR=renderer.xr.isPresenting;
+    if(inVR&&xrMouseSim.enabled&&typeof setXRMouseSimEnabled==='function'){
+      setXRMouseSimEnabled(false);
+    }
+    btn.style.display=inVR?'none':'block';
+  };
+
+  renderer.xr.addEventListener('sessionstart',syncVisibility);
+  renderer.xr.addEventListener('sessionend',syncVisibility);
+  syncVisibility();
+
+  document.body.appendChild(btn);
+  return btn;
+}
+
+createArcherySimulatorButton();
 
 const scene=new THREE.Scene();
 scene.fog=new THREE.FogExp2(0x000208,.016);
@@ -257,7 +330,7 @@ const back=new THREE.PointLight(0xff2d78,1.5,20);back.position.set(0,-2,-8);scen
 
 // Stars
 const sGeo=new THREE.BufferGeometry();
-const sN=1800,sP=new Float32Array(sN*3),sSz=new Float32Array(sN);
+const sN=VR_PERF.stars,sP=new Float32Array(sN*3),sSz=new Float32Array(sN);
 for(let i=0;i<sN;i++){sP[i*3]=(Math.random()-.5)*280;sP[i*3+1]=(Math.random()-.5)*280;sP[i*3+2]=(Math.random()-.5)*280;sSz[i]=Math.random()*1.8+.2;}
 sGeo.setAttribute('position',new THREE.BufferAttribute(sP,3));
 sGeo.setAttribute('size',new THREE.BufferAttribute(sSz,1));
@@ -270,11 +343,11 @@ nebula(-25,10,-65,38,0x1a0066,.13);nebula(28,-6,-70,30,0x001a77,.10);nebula(5,18
 
 // Galaxy
 const galMat=new THREE.ShaderMaterial({uniforms:{uT:{value:0}},vertexShader:`varying vec3 vP;void main(){vP=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,fragmentShader:`varying vec3 vP;uniform float uT;void main(){float t=sin(vP.x*.07+vP.y*.04+uT*.15)*.5+.5;vec3 c=mix(vec3(0.,.08,.25),vec3(.12,0.,.28),t);gl_FragColor=vec4(c,.07);}`,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide});
-const galaxy=new THREE.Mesh(new THREE.TorusGeometry(50,10,4,100),galMat);galaxy.rotation.x=Math.PI*.28;galaxy.position.z=-40;scene.add(galaxy);
+const galaxy=new THREE.Mesh(new THREE.TorusGeometry(50,10,4,64),galMat);galaxy.rotation.x=Math.PI*.28;galaxy.position.z=-40;scene.add(galaxy);
 
 // Asteroids
 const astGroup=new THREE.Group();
-for(let i=0;i<56;i++){const a=(i/56)*Math.PI*2,r=18+Math.random()*6;const m=new THREE.Mesh(new THREE.DodecahedronGeometry(Math.random()*.12+.04,0),new THREE.MeshStandardMaterial({color:0x223355,roughness:.9,metalness:.2}));m.position.set(Math.cos(a)*r,(Math.random()-.5)*3,Math.sin(a)*r-25);m.rotation.set(Math.random()*6,Math.random()*6,0);astGroup.add(m);}
+for(let i=0;i<VR_PERF.asteroids;i++){const a=(i/VR_PERF.asteroids)*Math.PI*2,r=18+Math.random()*6;const m=new THREE.Mesh(new THREE.DodecahedronGeometry(Math.random()*.12+.04,0),new THREE.MeshStandardMaterial({color:0x223355,roughness:.9,metalness:.2}));m.position.set(Math.cos(a)*r,(Math.random()-.5)*3,Math.sin(a)*r-25);m.rotation.set(Math.random()*6,Math.random()*6,0);astGroup.add(m);}
 scene.add(astGroup);
 
 // Floor
@@ -298,14 +371,14 @@ const floorFadeMat=new THREE.ShaderMaterial({
   fragmentShader:`uniform float uInner;uniform float uOuter;varying vec3 vPos;void main(){float r=length(vPos.xz);float a=smoothstep(uInner,uOuter,r);gl_FragColor=vec4(0.0,0.03,0.07,a*.62);}`,
   transparent:true,depthWrite:false,side:THREE.DoubleSide
 });
-const floorFade=new THREE.Mesh(new THREE.CircleGeometry(20,96),floorFadeMat);
+const floorFade=new THREE.Mesh(new THREE.CircleGeometry(20,64),floorFadeMat);
 floorFade.rotation.x=-Math.PI/2;
 floorFade.position.y=WORLD_FLOOR_Y+.04;
 scene.add(floorFade);
 
 // Floating particles
 const pGeo=new THREE.BufferGeometry();
-const pN=140,pP=new Float32Array(pN*3),pV=[];
+const pN=VR_PERF.ambientParticles,pP=new Float32Array(pN*3),pV=[];
 for(let i=0;i<pN;i++){pP[i*3]=(Math.random()-.5)*24;pP[i*3+1]=(Math.random()-.5)*12;pP[i*3+2]=(Math.random()-.5)*16;pV.push({x:(Math.random()-.5)*.004,y:Math.random()*.004+.001});}
 pGeo.setAttribute('position',new THREE.BufferAttribute(pP,3));
 scene.add(new THREE.Points(pGeo,new THREE.PointsMaterial({color:0x00f5ff,size:.055,transparent:true,opacity:.35,blending:THREE.AdditiveBlending,depthWrite:false})));
@@ -324,7 +397,7 @@ function loadAncientTexture(path,repeatX=1,repeatY=1,useSRGB=true){
   const tex=ancientTextureLoader.load(path);
   tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
   tex.repeat.set(repeatX,repeatY);
-  tex.anisotropy=renderer.capabilities.getMaxAnisotropy();
+  tex.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),VR_PERF.isQuest?2:8);
   if(useSRGB){
     if('colorSpace' in tex&&THREE.SRGBColorSpace) tex.colorSpace=THREE.SRGBColorSpace;
     else if('encoding' in tex&&THREE.sRGBEncoding) tex.encoding=THREE.sRGBEncoding;
@@ -529,6 +602,3 @@ for(let i=0;i<6;i++){
 
   ancientEnv.add(brazier);
 }
-
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-

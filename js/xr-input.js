@@ -234,6 +234,7 @@ function setXRControllerHoverVisual(controller,hovered){
 function updateXRHover(){
   xrInteractiveButtons.forEach(b=>setXRUIButtonHover(b,false));
   let hasMouseSimUiHit=false;
+  let boardInfoHit=null;
   xrControllers.forEach(controller=>{
     const line=controller.getObjectByName('xr-line');
     if(!line) return;
@@ -262,6 +263,22 @@ function updateXRHover(){
     if(!G.active){line.scale.z=1;if(line.userData.tip) line.userData.tip.position.z=-5;return;}
 
     if(G.phase==='idle'){
+      const boardInfoItems=G.mode!=='archery'
+        ? G.boardItems.filter(item=>item.placed&&item.dot&&item.dot.visible)
+        : [];
+      const boardHits=boardInfoItems.length
+        ? getControllerIntersections(controller,boardInfoItems.map(item=>item.dot))
+        : [];
+      if(boardHits.length){
+        const hit=boardHits[0];
+        const item=boardInfoItems.find(entry=>entry.dot===hit.object);
+        if(item&&!boardInfoHit) boardInfoHit={item,point:hit.point.clone()};
+        line.scale.z=Math.max(.08,hit.distance/5);
+        if(line.userData.tip) line.userData.tip.position.z=-5*line.scale.z;
+        setXRControllerHoverVisual(controller,true);
+        return;
+      }
+
       const pickable=G.marbles.filter(m=>!m.grp.userData.placed&&!m.grp.userData.inFlight);
       const hits=getControllerIntersections(controller,pickable.map(m=>m.grp.userData.mm));
       line.scale.z=hits.length?Math.max(.08,hits[0].distance/5):1;
@@ -290,9 +307,65 @@ function updateXRHover(){
     }
     if(line.userData.tip) line.userData.tip.position.z=-5*line.scale.z;
   });
+  if(boardInfoHit) showXRBoardColorInfo(boardInfoHit.item,boardInfoHit.point);
+  else hideXRBoardColorInfo();
   if(xrMouseSim.enabled){
     tip.style.opacity=hasMouseSimUiHit?'1':'0';
   }
+}
+
+const xrMouseSimCamPos=new THREE.Vector3();
+const xrMouseSimCamQuat=new THREE.Quaternion();
+const xrMouseSimRight=new THREE.Vector3();
+const xrMouseSimUp=new THREE.Vector3();
+const xrMouseSimForward=new THREE.Vector3();
+
+function createXRLowPolyHand(handedness){
+  const hand=new THREE.Group();
+  const isLeft=handedness==='left';
+  const handSign=isLeft?-1:1;
+  const gloveMat=new THREE.MeshStandardMaterial({
+    color:isLeft?0x7adcf5:0xc6a0f6,
+    roughness:.72,
+    metalness:.02,
+    flatShading:true
+  });
+
+  const palm=new THREE.Mesh(new THREE.BoxGeometry(.052,.06,.018),gloveMat);
+  palm.position.set(0,0,.012);
+  hand.add(palm);
+
+  const wrist=new THREE.Mesh(new THREE.BoxGeometry(.038,.024,.018),gloveMat);
+  wrist.position.set(0,-.041,.012);
+  hand.add(wrist);
+
+  [-.0195,-.0065,.0065,.0195].forEach((x,index)=>{
+    const fingerLength=.031-Math.abs(index-1.5)*.003;
+    const finger=new THREE.Mesh(
+      new THREE.CylinderGeometry(.0058,.0064,fingerLength,6),
+      gloveMat
+    );
+    finger.position.set(x,.03+fingerLength*.5,.012);
+    hand.add(finger);
+  });
+
+  const thumb=new THREE.Mesh(
+    new THREE.CylinderGeometry(.0064,.007,.029,6),
+    gloveMat
+  );
+  thumb.position.set(.033*handSign,-.002,.012);
+  thumb.rotation.z=-handSign*.9;
+  hand.add(thumb);
+
+  hand.position.set(0,-.015,.025);
+  hand.rotation.x=-.12;
+  hand.scale.setScalar(.62);
+  hand.traverse(obj=>{if(obj.isMesh)obj.renderOrder=9997;});
+  return hand;
+}
+
+function createXRSimHandModel(handedness){
+  return createXRLowPolyHand(handedness);
 }
 
 function setupXRMouseSimulator(){
@@ -315,21 +388,62 @@ function setupXRMouseSimulator(){
   const c=new THREE.Group();
   c.visible=false;
   c.userData.isMouseSim=true;
-  c.userData.handedness='left';
+  c.userData.handedness='right';
+  c.add(createXRSimHandModel('right'));
   c.add(tipDot);
   c.add(line);
   scene.add(c);
   xrControllers.push(c);
   xrMouseSim.controller=c;
+
+  const bowController=new THREE.Group();
+  bowController.visible=false;
+  bowController.userData.isMouseSim=true;
+  bowController.userData.handedness='left';
+  bowController.add(createXRSimHandModel('left'));
+  scene.add(bowController);
+  xrMouseSim.bowController=bowController;
 }
 
 function updateXRMouseSimController(){
   if(!xrMouseSim.enabled||!xrMouseSim.controller) return;
   ray.setFromCamera(mouse,camera);
-  xrMouseSim.controller.position.copy(ray.ray.origin);
   xrMouseAimDir.copy(ray.ray.direction).normalize();
+  xrMouseSim.controller.position.copy(ray.ray.origin)
+    .addScaledVector(xrMouseAimDir,xrMouseSim.handDepth);
   xrMouseSim.controller.quaternion.setFromUnitVectors(xrForwardRef,xrMouseAimDir);
   xrMouseSim.controller.updateMatrixWorld(true);
+
+  if(xrMouseSim.bowController){
+    camera.getWorldPosition(xrMouseSimCamPos);
+    camera.getWorldQuaternion(xrMouseSimCamQuat);
+    xrMouseSimRight.set(1,0,0).applyQuaternion(xrMouseSimCamQuat);
+    xrMouseSimUp.set(0,1,0).applyQuaternion(xrMouseSimCamQuat);
+    xrMouseSimForward.set(0,0,-1).applyQuaternion(xrMouseSimCamQuat);
+    xrMouseSim.bowController.position.copy(xrMouseSimCamPos)
+      .addScaledVector(xrMouseSimRight,-.28)
+      .addScaledVector(xrMouseSimUp,-.06)
+      .addScaledVector(xrMouseSimForward,.72);
+    xrMouseSim.bowController.quaternion.copy(xrMouseSimCamQuat);
+    xrMouseSim.bowController.updateMatrixWorld(true);
+  }
+}
+
+function toggleXRMouseSimBow(){
+  if(!xrMouseSim.enabled||!G.active||G.mode!=='archery'||!xrArchery.active) return false;
+  const bowController=xrMouseSim.bowController;
+  if(!bowController||!xrArchery.bowMesh) return false;
+  if(xrArchery.bowHoldController===bowController){
+    if(xrArchery.heldArrow) releaseArcheryHeldArrow(false);
+    releaseArcheryBow();
+    toast('Giả lập: đã đặt cung xuống bàn', 'inf', 800);
+    return true;
+  }
+  if(xrArchery.bowHoldController) return false;
+  updateXRMouseSimController();
+  attachArcheryBow(bowController);
+  toast('Giả lập: chọn rune màu · Click tâm dây để kéo', 'inf', 1100);
+  return true;
 }
 
 function setXRMouseSimEnabled(enabled){
@@ -340,59 +454,33 @@ function setXRMouseSimEnabled(enabled){
   if(xrMouseSim.enabled===enabled) return;
   xrMouseSim.enabled=enabled;
   if(xrMouseSim.controller) xrMouseSim.controller.visible=enabled;
+  if(xrMouseSim.bowController) xrMouseSim.bowController.visible=enabled;
+  xrMouseSim.archeryMouseDown=false;
+  xrMouseSim.handDepth=.38;
   refreshXRWristHudAnchor();
 
   if(!enabled){
     xrUiSliderDragController=null;
+    if(xrArchery.arrowHoldController===xrMouseSim.controller&&xrArchery.heldArrow){
+      releaseArcheryHeldArrow(false);
+    }
     if(xrDragController===xrMouseSim.controller&&G.phase==='dragging'&&G.selectedMb){
       onXRSelectEnd({target:xrMouseSim.controller});
     }
+    if(xrArchery.bowHoldController===xrMouseSim.bowController) releaseArcheryBow();
     setXRStatus('Đã tắt giả lập VR Controller bằng chuột');
+    const simBtn=document.getElementById('archery-sim-btn');
+    if(simBtn) simBtn.textContent='TEST ARCHERY';
     return;
   }
 
   mouse.x=0;
   mouse.y=0;
   updateXRMouseSimController();
-  setXRStatus('Giả lập VR Controller ON · Chuột trái=Trigger · R/T=Di chuyển · F2=tắt','ok');
+  setXRStatus('Giả lập Archery · R=Cầm cung · Click rune/chạm dây · Kéo/Thả=Bắn · T=Di chuyển','ok');
+  const simBtn=document.getElementById('archery-sim-btn');
+  if(simBtn) simBtn.textContent='STOP TEST';
   toast('Giả lập VR ON', 'inf', 900);
-}
-
-function createXRControllerHandle(handedness){
-  const g=new THREE.Group();
-  g.name='xr-controller-handle';
-  const isLeft=handedness==='left';
-  const bodyMat=new THREE.MeshStandardMaterial({
-    color:isLeft?0x203a55:0x3d284f,
-    roughness:.34,
-    metalness:.45,
-    emissive:isLeft?0x082236:0x22082d,
-    emissiveIntensity:.35
-  });
-  const accentMat=new THREE.MeshBasicMaterial({
-    color:isLeft?0x73eaff:0xff9cff,
-    transparent:true,
-    opacity:.72,
-    blending:THREE.AdditiveBlending,
-    depthWrite:false
-  });
-  const grip=new THREE.Mesh(new THREE.CylinderGeometry(.026,.032,.18,16),bodyMat);
-  grip.rotation.x=Math.PI*.5;
-  grip.position.set(0,-.015,.04);
-  g.add(grip);
-  const head=new THREE.Mesh(new THREE.SphereGeometry(.04,18,14),bodyMat);
-  head.scale.set(1,.78,1.18);
-  head.position.set(0,.005,-.045);
-  g.add(head);
-  const ring=new THREE.Mesh(new THREE.TorusGeometry(.052,.006,8,28),accentMat);
-  ring.rotation.x=Math.PI*.5;
-  ring.position.set(0,.006,-.045);
-  g.add(ring);
-  const trigger=new THREE.Mesh(new THREE.BoxGeometry(.018,.035,.012),accentMat);
-  trigger.position.set(0,-.038,-.035);
-  g.add(trigger);
-  g.traverse(o=>{if(o.isMesh) o.renderOrder=9997;});
-  return g;
 }
 
 function setupXRControllers(){
@@ -400,9 +488,11 @@ function setupXRControllers(){
   const lineMat=new THREE.LineBasicMaterial({color:0x00f5ff,transparent:true,opacity:.98,depthTest:false,blending:THREE.AdditiveBlending});
   for(let i=0;i<2;i++){
     const c=renderer.xr.getController(i);
+    const grip=renderer.xr.getControllerGrip(i);
     c.userData.isMouseSim=false;
     c.userData.handedness=i===0?'left':'right';
     c.userData.xrConnected=false;
+    c.userData.grip=grip;
     const line=new THREE.Line(lineGeo,lineMat.clone());
     line.name='xr-line';
     line.renderOrder=9998;
@@ -417,22 +507,24 @@ function setupXRControllers(){
     tipDot.position.z=-5;
     tipDot.renderOrder=9999;
     line.userData.tip=tipDot;
-    c.add(createXRControllerHandle(c.userData.handedness));
     c.add(tipDot);
     c.add(line);
     c.addEventListener('connected',e=>{
       c.userData.xrConnected=true;
+      c.userData.inputSource=e.data||null;
       if(e.data&&e.data.handedness) c.userData.handedness=e.data.handedness;
       refreshXRWristHudAnchor();
     });
     c.addEventListener('disconnected',()=>{
       c.userData.xrConnected=false;
+      c.userData.inputSource=null;
       refreshXRWristHudAnchor();
     });
     c.addEventListener('selectstart',onXRSelectStart);
     c.addEventListener('selectend',onXRSelectEnd);
     c.addEventListener('squeezestart',onXRSqueezeStart);
     scene.add(c);
+    scene.add(grip);
     xrControllers.push(c);
   }
 }
@@ -468,7 +560,4 @@ function getControllerAimedSlot(controller){
   const mesh=hits[0].object;
   return G.slots.find(s=>s.mesh===mesh&&!s.filled)||null;
 }
-
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
 

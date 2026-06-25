@@ -87,6 +87,8 @@ function animate(){
     b.glow.material.opacity=.62+.3*p;
     b.dot.scale.setScalar(1.06+.06*p);
   });
+
+  if(xrMouseSim.enabled) updateXRMouseSimController();
   
   updateFlight(dt);
   updateBurst(dt);
@@ -98,7 +100,7 @@ function animate(){
   updateXRDefeatArena(dt);
   
   if(!renderer.xr.isPresenting){
-    updateDesktopOrbitCamera(t);
+    if(!xrMouseSim.enabled) updateDesktopOrbitCamera(t);
     cursor.style.opacity='1';
     if(!xrMouseSim.enabled) tip.style.opacity='0';
   }else{
